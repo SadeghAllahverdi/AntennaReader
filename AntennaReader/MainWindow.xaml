@@ -1,0 +1,45 @@
+﻿<Window x:Class="AntennaReader.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AntennaReader"
+        mc:Ignorable="d"
+        Title="PlotLeser" 
+        Height="500" Width="400"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Menu Grid.Row="0" Panel.ZIndex="1">
+            <MenuItem Header="File">
+                <MenuItem Header="Open Image" Click="OpenImage_Click"/>
+                <MenuItem Header="Delete Image" Click="DeleteImage_Click"/>
+            </MenuItem>
+            <MenuItem Header="Save">
+                <MenuItem Header="Save in CSV DB" Click="SaveCSV_Click"/>
+                <MenuItem Header="Save in PAT DIR" Click="SavePAT_Click"/>
+            </MenuItem>
+            <MenuItem Header="Diagram">
+                <MenuItem Header="Draw" Click="DrawDiagram_Click"/>
+                <MenuItem Header="Delete" Click="DeleteDiagram_Click"/>
+                <MenuItem Header="Lock" Click="LockDiagram_Click"/>
+                <MenuItem Header="Delete All Points" Click="DeletePoints_Click"/>
+                <MenuItem Header="Undo Point" Click="UndoPoint_Click"/>
+                <MenuItem Header="Redo Point" Click="RedoPoint_Click"/>
+            </MenuItem>
+            <MenuItem Header="Options">
+                <MenuItem Header="Resize Window" Click="ResizeWindow_Click"/>
+                <MenuItem Header="Recenter Window" Click="RecenterWindow_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <local:DrawingCanvas x:Name="drawingCanvas"
+                Grid.Row="1"
+                Background="DimGray"
+                Visibility="Visible"/>
+    </Grid>
+</Window>
