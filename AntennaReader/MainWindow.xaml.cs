@@ -12,7 +12,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-using System.IO;
+
 namespace AntennaReader
 {
     /// <summary>
@@ -30,7 +30,7 @@ namespace AntennaReader
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Image Files (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg";
 
-            if (openFileDialog.ShowDialog() == true)
+            if (openFileDialog.ShowDialog() == true) // user said ok
             {
                 string filePath = openFileDialog.FileName;
                 try

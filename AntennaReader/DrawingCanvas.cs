@@ -16,59 +16,78 @@ namespace AntennaReader
     public class DrawingCanvas : Canvas
     {
         #region States
-        private bool _isDrawing = false;
-        private bool _isMoving = false;
-        private bool _isResizing = false;
-        public bool IsLocked { get; set; } = false;
+        private bool _isDrawing = false;    // draw state
+        private bool _isMoving = false;     // move state
+        private bool _isResizing = false;   // resize state
+        private bool _isLocked = false;     // locked state
+        public bool IsLocked { get=> _isLocked; set=> _isLocked = value; } // property
         #endregion
 
         #region Attributes
         private BitmapImage? _backgroundImage = null;   // background image
-        private double _backgroundRotation = 0.0;       // background image rotation
+        private double _backgroundRotation = 0.0;       // background rotation
+
         private Point? _startPoint = null;              // start point for draw
         private Point? _endPoint = null;                // end point for draw
+
         private Point? _moveStartPoint = null;          // start point for move
         private Point? _moveEndPoint = null;            // end point for move
-        private string _resizeDirection = "";
+
+        private string _resizeDirection = "";           // resize direction
         private Point _origin = new Point(0.0, 0.0);    // origne of the diagram
-        private double _zoomFactor = 1.0;
+        private double _zoomFactor = 1.0;               // zoom factor
+
+        private List<int> _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };    // contour levels in dB
+
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store points
-        private List<int> _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };       // contour levels in dB
         #endregion
 
         #region Constructor 
+        /// <summary>
+        /// Initializes the canvas Object, sets default background and subscribes to mouse and keyboard events
+        /// </summary>
         public DrawingCanvas()
         {
             this.Focusable = true;                 // enable keyboard focus
-            this.Background = Brushes.DarkGray;    // set background color
-            // define mouse event handlers
-            this.MouseLeftButtonDown += DrawingCanvas_MouseLeftButtonDown;
-            this.MouseLeftButtonUp += DrawingCanvas_MouseLeftButtonUp;
-            this.MouseMove += DrawingCanvas_MouseMove;
-            this.MouseWheel += DrawingCanvas_MouseWheel;
-            this.KeyDown += DrawingCanvas_KeyDown;
+            this.Background = Brushes.DarkGray;    // set default background color
+            // subscribe to mouse and key event handlers
+            this.MouseLeftButtonDown += DrawingCanvas_MouseLeftButtonDown; // left click
+            this.MouseLeftButtonUp += DrawingCanvas_MouseLeftButtonUp;     // left release
+            this.MouseMove += DrawingCanvas_MouseMove;   // move
+            this.MouseWheel += DrawingCanvas_MouseWheel; // wheel
+            this.KeyDown += DrawingCanvas_KeyDown;       // keyboard button push
         }
         #endregion
 
         #region Event Handler (Mouse Move)
+        /// <summary>
+        /// handles mouse move events for draw, move , resize states.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void DrawingCanvas_MouseMove(object sender, MouseEventArgs e)
         {
-            Point pos = this._GetPositions(e.GetPosition(this));
-            if (!this._isMoving && !this._isDrawing && !this._isResizing)
+            Point pos = this._GetPositions(e.GetPosition(this)); // get position of the event
+            // determine the current state
+            // 1. if not move or draw or resize -> set cursor icon
+            if (!this._isMoving && !this._isDrawing && !this._isResizing) 
             {
                 this._SetCursorIcon(pos);
                 return;
             }
+            // 1. resize -> call helper function for resize -> update visuals
             if (this._isResizing)
             {
                 this.Resize(pos);
                 this.InvalidateVisual();
             }
+            // 2. if move -> call helper function for resize -> update visuals
             if (this._isMoving)
             {
                 this.Move(pos);
                 this.InvalidateVisual();
             }
+            // 1. if draw -> call helper function for draw -> update visuals
             if (this._isDrawing)
             {
                 this.Draw(pos);
@@ -78,25 +97,36 @@ namespace AntennaReader
         #endregion
 
         #region Event Handler (Mouse Left Release)
+        /// <summary>
+        /// handles when mouse left button is released -> reset draw, move, resize so that mouse move does not affect anything.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void DrawingCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            this._isDrawing = false;
-            this._isMoving = false;
-            this._isResizing = false;
-            this._resizeDirection = "";
+            this._isDrawing = false;    // reset draw state
+            this._isMoving = false;     // reset move state
+            this._isResizing = false;   // reset resize state
+            this._resizeDirection = ""; // reset resize direction
         }
         #endregion
 
         #region Event Handler (Mouse Left Click)
+        /// <summary>
+        /// handels when mouse left button is clicked -> determine operation (measure, resize, move, draw) and set states so 
+        /// that mouse move can perform the correct operation.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void DrawingCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            this.Focus(); // Grab keyboard focus
-
-            Point pos = this._GetPositions(e.GetPosition(this));
-            if (this.IsLocked)
+            Point pos = this._GetPositions(e.GetPosition(this)); // get position of the event
+            // determine the correct operation
+            // 1. if diagram is locked -> measure angle, dbValue and position
+            if (this._isLocked)
             {
                 (int closestAngle, double dbValue, Point point)? result = this.MeasurePoint(pos);
-                if (result != null)
+                if (result != null) // if measurement is valid -> store it and update visuals
                 {
                     int angle = result.Value.closestAngle;
                     double dbValue = result.Value.dbValue;
@@ -106,6 +136,7 @@ namespace AntennaReader
                     return;
                 }
             }
+            // 2. if position of the event is near an edge-> set state: resize
             string rd = this._GetResizeDirection(pos);
             if (rd != "")
             {
@@ -114,7 +145,7 @@ namespace AntennaReader
                 this._isResizing = true;
                 this._resizeDirection = rd;
             }
-
+            // 2. if position of the event is inside the ellipse -> set state: move
             if (this._IsInsideEllipse(pos))
             {
                 this._isDrawing = false;
@@ -122,6 +153,7 @@ namespace AntennaReader
                 this._isMoving = true;
                 this._moveStartPoint = pos;
             }
+            // 3. if there is no start point -> set state: draw and set start point to the event position
             else if (this._startPoint == null)
             {
                 this._isMoving = false;
@@ -133,26 +165,37 @@ namespace AntennaReader
         #endregion
 
         #region Event Handler (Mouse Wheel)
+        /// <summary>
+        /// handels when mouse wheel is scrolled -> zoom in or out based on the scroll direction
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void DrawingCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
         {
+            // check if the diagram is defined
             if (this._startPoint == null || this._endPoint == null)
             {
                 return;
             }
-            Point pos = e.GetPosition(this);
-            double delta = e.Delta > 0 ? 1.1 : 0.9;
 
-            double oldZoomFactor = this._zoomFactor;
-            double x = (pos.X - this._origin.X) / oldZoomFactor;
-            double y = (pos.Y - this._origin.Y) / oldZoomFactor;
+            Point pos = e.GetPosition(this); // get the position of the event
 
-            this._zoomFactor *= delta;
-            this._zoomFactor = Math.Clamp(this._zoomFactor, 0.1, 12.0);
+            double delta = e.Delta > 0 ? 1.1 : 0.9; // determine zoom direction
+            double zf = this._zoomFactor; // save current zoom factor
 
-            double ox = pos.X - x * this._zoomFactor;
+            // calculate the position based on the current zoom factor and origin
+            double x = (pos.X - this._origin.X) / zf;
+            double y = (pos.Y - this._origin.Y) / zf;
+
+            // update zoom factor
+            this._zoomFactor *= delta; 
+            this._zoomFactor = Math.Clamp(this._zoomFactor, 0.1, 12.0); // clamp zoom factor to a range
+
+            // update origin
+            double ox = pos.X - x * this._zoomFactor; 
             double oy = pos.Y - y * this._zoomFactor;
-
             this._origin = new Point(ox, oy);
+
             this.InvalidateVisual();
         }
         #endregion
@@ -160,15 +203,18 @@ namespace AntennaReader
         #region Event Handler (Key Down)
         private void DrawingCanvas_KeyDown(object sender, KeyEventArgs e)
         {
-            if (!this.IsLocked)
+            // check if diagram is locked
+            if (!this._isLocked)
             {
                 return;
             }
+            // rotate background counter clockwise 
             if (e.Key == Key.Q)
             {
                 this._backgroundRotation -= 1.0;
                 InvalidateVisual();
             }
+            // rotate background clockwise
             else if (e.Key == Key.E)
             {
                 this._backgroundRotation += 1.0;
@@ -356,7 +402,7 @@ namespace AntennaReader
         #region Helper Function (Set Cursor Icon)
         private void _SetCursorIcon(Point pos)
         {
-            if (this.IsLocked)
+            if (this._isLocked)
             {
                 this.Cursor = Cursors.Arrow;
                 return;
@@ -454,7 +500,7 @@ namespace AntennaReader
         #region Helper Function (Delete Diagram)
         public void DeleteDiagram()
         {
-            this.IsLocked = false;
+            this._isLocked = false;
             this._isDrawing = false;
             this._isMoving = false;
             this._isResizing = false;
