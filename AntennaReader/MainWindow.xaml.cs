@@ -20,14 +20,38 @@ namespace AntennaReader
     /// </summary>
     public partial class MainWindow : Window
     {
-        private string _csvFile = "AntennaMeasurements.csv";
-        private bool _csvFileExists = false;
-        private string _patDir = "./pat_files/"; 
-        private bool _patDirExists = false;
+        #region Attributes
+        private string _csvFile => System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "AntennaReader",
+            "AntennaMeasurements.csv"
+        );
+        private string _patDir => System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "AntennaReader",
+            "pat_files"
+        );
+        #endregion
+
+        #region Constructor
         public MainWindow()
         {
             InitializeComponent();
+            // create the base directory if it doesn't exist
+            try
+            {
+                string baseDir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "AntennaReader"
+                );
+                Directory.CreateDirectory(baseDir);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to create data directory: {ex.Message}", "Error");
+            }
         }
+        #endregion
 
         #region Button Click -> Open Image
         /// <summary>
@@ -97,20 +121,19 @@ namespace AntennaReader
             {
                 return;
             }
-            // prepare row data
+            
             Dictionary<int, (double, Point)> measurements = drawingCanvas.measurements; // store current measurements
             List<string> row = new List<string> { antennaID }; // first column value -> antenna ID
-            // add dB values for each angle
-            for (int angle = 0; angle < 360; angle += 10)
+            for (int angle = 0; angle < 360; angle += 10) // add dB values for each angle
             {
                 double dbValue = measurements[angle].Item1;
                 row.Add(Math.Round(dbValue, 1).ToString());
             }
-            // does file already exist?
+
+            bool needsHeader = !File.Exists(this._csvFile) || new FileInfo(this._csvFile).Length == 0;
             using (StreamWriter writer = new StreamWriter(this._csvFile, append: true)) // make file
             {
-                // if file already existed -> skip header
-                if (!this._csvFileExists)
+                if (needsHeader)
                 {
                     List<string> header = new List<string> { "AntennaID" }; // antenna ID column
                     for (int angle = 0; angle < 360; angle += 10) // one column per angle
@@ -121,7 +144,6 @@ namespace AntennaReader
                 }
                 // write row data
                 writer.WriteLine(string.Join(",", row));
-                this._csvFileExists = true;
             }
             // show success
             MessageBox.Show($"Antenna {antennaID} saved to {this._csvFile}!");
@@ -137,16 +159,15 @@ namespace AntennaReader
         private void SavePAT_Click(object sender, RoutedEventArgs e)
         {
             // check if csv exists
-            if (!this._csvFileExists)
+            if (!File.Exists(this._csvFile))
             {
                 MessageBox.Show("No CSV file found. Please save measurements first!");
                 return;
             }
             // create pat_files directory if it doesn't exist
-            if (!this._patDirExists)
+            if (!Directory.Exists(this._patDir))
             {
                 Directory.CreateDirectory(this._patDir);
-                this._patDirExists = true;
             }
             try
             {
@@ -240,5 +261,6 @@ namespace AntennaReader
             MessageBox.Show("All points deleted!", "Success");
         }
         #endregion
+
     }
 }
