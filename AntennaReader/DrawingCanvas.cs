@@ -201,6 +201,11 @@ namespace AntennaReader
         #endregion
 
         #region Event Handler (Key Down)
+        /// <summary>
+        /// handles when keyboard E or Q is pressed -> rotates background image if diagram is locked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void DrawingCanvas_KeyDown(object sender, KeyEventArgs e)
         {
             // check if diagram is locked
@@ -228,8 +233,8 @@ namespace AntennaReader
         {
             base.OnRender(dc);
 
-            dc.PushTransform(new TranslateTransform(this._origin.X, this._origin.Y));
-            dc.PushTransform(new ScaleTransform(this._zoomFactor, this._zoomFactor));
+            dc.PushTransform(new TranslateTransform(this._origin.X, this._origin.Y)); // shift coordinate system to origin
+            dc.PushTransform(new ScaleTransform(this._zoomFactor, this._zoomFactor)); // multiply coordinate system with zoom factor
 
             // draw background image if available
             if (this._backgroundImage != null)
@@ -237,37 +242,44 @@ namespace AntennaReader
                 double bgWidth = this._backgroundImage.PixelWidth;
                 double bgHeight = this._backgroundImage.PixelHeight;
 
-                dc.PushTransform(new TranslateTransform(bgWidth / 2, bgHeight / 2));
-                dc.PushTransform(new RotateTransform(this._backgroundRotation));
-                dc.PushTransform(new TranslateTransform(-bgWidth / 2, -bgHeight / 2));
+                dc.PushTransform(new TranslateTransform(bgWidth / 2, bgHeight / 2));    // shift coordinate system to image center
+                dc.PushTransform(new RotateTransform(this._backgroundRotation));        // rotate coordinate system
+                dc.PushTransform(new TranslateTransform(-bgWidth / 2, -bgHeight / 2));  // reset coordinate system
 
-                dc.DrawImage(this._backgroundImage, new Rect(0, 0, bgWidth, bgHeight));
-
-                dc.Pop();
+                dc.DrawImage(this._backgroundImage, new Rect(0, 0, bgWidth, bgHeight)); // draw image
+                // remove all transforms
+                dc.Pop(); 
                 dc.Pop();
                 dc.Pop();
             }
-
+            // check if there is a diagram defined
             if (this._startPoint == null || this._endPoint == null)
             {
+                // remove all transforms and return
                 dc.Pop();
                 dc.Pop();
                 return;
             }
 
+            // define rectangle based on start and end points
             Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+            // calculate center point
             Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+            // define ellipse based
             EllipseGeometry ellipse = new EllipseGeometry(center, rect.Width / 2, rect.Height / 2);
 
-            dc.DrawRectangle(null, new Pen(Brushes.Red, 2), rect);
-            dc.DrawGeometry(null, new Pen(Brushes.Blue, 2), ellipse);
+            dc.DrawRectangle(null, new Pen(Brushes.Red, 2), rect); // draw rectangle
+            dc.DrawGeometry(null, new Pen(Brushes.Blue, 2), ellipse); // draw ellipse
 
-            for (int deg = 0; deg < 360; deg += 10)
+            // draw radial lines and labels
+            for (int deg = 0; deg < 360; deg += 10) // every 10 degrees
             {
-                double lx = center.X + (rect.Width / 2) * Math.Cos((deg - 90) * Math.PI / 180.0);
-                double ly = center.Y + (rect.Height / 2) * Math.Sin((deg - 90) * Math.PI / 180.0);
+                // calculate x and y components
+                double lx = center.X + (rect.Width / 2) * Math.Cos((deg - 90) * Math.PI / 180.0); // x componet of the edge point
+                double ly = center.Y + (rect.Height / 2) * Math.Sin((deg - 90) * Math.PI / 180.0); // y component of the edge point
+                // draw line from center to edge
                 dc.DrawLine(new Pen(Brushes.Gray, 1), center, new Point(lx, ly));
-
+                // label
                 FormattedText text = new FormattedText(
                     $"{deg}°",
                     CultureInfo.CurrentCulture,
@@ -277,20 +289,22 @@ namespace AntennaReader
                     Brushes.White,
                     VisualTreeHelper.GetDpi(this).PixelsPerDip
                 );
-
-                double tx = center.X + (rect.Width / 2) * 1.1 * Math.Cos((deg - 90) * Math.PI / 180.0);
-                double ty = center.Y + (rect.Height / 2) * 1.1 * Math.Sin((deg - 90) * Math.PI / 180.0);
+                double tx = center.X + (rect.Width / 2) * 1.1 * Math.Cos((deg - 90) * Math.PI / 180.0); // x component of label 
+                double ty = center.Y + (rect.Height / 2) * 1.1 * Math.Sin((deg - 90) * Math.PI / 180.0); // y component of label
+                // draw label
                 dc.DrawText(text, new Point(tx - text.Width / 2, ty - text.Height / 2));
             }
-
+            // draw contour lines and labels
             foreach (int cr in this._contours)
             {
-                double rx = (rect.Width / 2) * Math.Pow(10, -cr / 20.0);
-                double ry = (rect.Height / 2) * Math.Pow(10, -cr / 20.0);
-
+                // calculate rx and ry based on contour value
+                double rx = (rect.Width / 2) * Math.Pow(10, -cr / 20.0);  // rx
+                double ry = (rect.Height / 2) * Math.Pow(10, -cr / 20.0); // ry
+                // define ellipse 
                 EllipseGeometry contourEllipse = new EllipseGeometry(center, rx, ry);
+                // draw contour ellipse
                 dc.DrawGeometry(null, new Pen(Brushes.LightGray, 1), contourEllipse);
-
+                // label
                 FormattedText text = new FormattedText(
                     $"{cr}°",
                     CultureInfo.CurrentCulture,
@@ -301,40 +315,40 @@ namespace AntennaReader
                     VisualTreeHelper.GetDpi(this).PixelsPerDip
                 );
 
-                double tx = center.X + rx;
-                double ty = center.Y;
+                double tx = center.X + rx; // x component of label
+                double ty = center.Y;      // y component of label
+                // draw label
                 dc.DrawText(text, new Point(tx - text.Width / 2, ty - text.Height / 2));
             }
 
+            // draw measured points
             foreach (KeyValuePair<int, (double, Point)> entry in this.measurements)
             {
-                int angle = entry.Key;
-                double dbValue = entry.Value.Item1;
-                Point point = entry.Value.Item2;
+                int angle = entry.Key;           // angle
+                Point point = entry.Value.Item2; // position
+                // draw point
                 dc.DrawEllipse(Brushes.Yellow, new Pen(Brushes.Orange, 1), point, 2, 2);
             }
-
+            // if more than one point -> connect with lines
             if (this.measurements.Count > 1)
             {
-                List<int> angles = this.measurements.Keys.OrderBy(a => a).ToList();
-                for (int i = 0; i < angles.Count - 1; i++)
+                List<int> sortedAngles = this.measurements.Keys.OrderBy(a => a).ToList(); // angles (sorted)
+                for (int i = 0; i < sortedAngles.Count - 1; i++)
                 {
-                    int angle1 = angles[i];
-                    Point p1 = this.measurements[angle1].Item2;
-
-                    int angle2 = angles[i + 1];
-                    Point p2 = this.measurements[angle2].Item2;
-
+                    Point p1 = this.measurements[sortedAngles[i]].Item2; // position 1
+                    Point p2 = this.measurements[sortedAngles[i + 1]].Item2; // position 2
+                    // draw line from p1 to p2
                     dc.DrawLine(new Pen(Brushes.Orange, 1), p1, p2);
                 }
-                if (angles.Count == 36)
+                if (sortedAngles.Count == 36) // if all points are measured -> connect last to fist
                 {
-                    Point firstPoint = this.measurements[angles[0]].Item2;
-                    Point lastPoint = this.measurements[angles[angles.Count - 1]].Item2;
-                    dc.DrawLine(new Pen(Brushes.Orange, 1), lastPoint, firstPoint);
+                    Point first = this.measurements[sortedAngles[0]].Item2; //first point
+                    Point last = this.measurements[sortedAngles[35]].Item2; // last point
+                    // draw line from last to first
+                    dc.DrawLine(new Pen(Brushes.Orange, 1), last, first);
                 }
             }
-
+            // remove all transforms
             dc.Pop();
             dc.Pop();
         }
