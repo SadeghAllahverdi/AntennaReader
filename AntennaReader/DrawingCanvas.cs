@@ -67,7 +67,8 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void DrawingCanvas_MouseMove(object sender, MouseEventArgs e)
         {
-            Point pos = this._GetPositions(e.GetPosition(this)); // get position of the event
+            Point p = e.GetPosition(this);     // get absolute position of the mouse
+            Point pos = this._GetPositions(p); // recalculate position based on current origin and zoom factor
             // determine the current state
             // 1. if not move or draw or resize -> set cursor icon
             if (!this._isMoving && !this._isDrawing && !this._isResizing) 
@@ -79,19 +80,16 @@ namespace AntennaReader
             if (this._isResizing)
             {
                 this.Resize(pos);
-                this.InvalidateVisual();
             }
             // 2. if move -> call helper function for resize -> update visuals
             if (this._isMoving)
             {
                 this.Move(pos);
-                this.InvalidateVisual();
             }
             // 1. if draw -> call helper function for draw -> update visuals
             if (this._isDrawing)
             {
                 this.Draw(pos);
-                this.InvalidateVisual();
             }
         }
         #endregion
@@ -120,7 +118,8 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void DrawingCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            Point pos = this._GetPositions(e.GetPosition(this)); // get position of the event
+            Point p = e.GetPosition(this); // get absolute position of the mouse
+            Point pos = this._GetPositions(p); // recalculate position based on current origin and zoom factor
             // determine the correct operation
             // 1. if diagram is locked -> measure angle, dbValue and position
             if (this._isLocked)
@@ -151,7 +150,7 @@ namespace AntennaReader
                 this._isDrawing = false;
                 this._isResizing = false;
                 this._isMoving = true;
-                this._moveStartPoint = pos;
+                this._moveStartPoint = pos; // set move start point
             }
             // 3. if there is no start point -> set state: draw and set start point to the event position
             else if (this._startPoint == null)
@@ -159,7 +158,7 @@ namespace AntennaReader
                 this._isMoving = false;
                 this._isResizing = false;
                 this._isDrawing = true;
-                this._startPoint = pos;
+                this._startPoint = pos; // set start point of diagram
             }
         }
         #endregion
@@ -178,22 +177,21 @@ namespace AntennaReader
                 return;
             }
 
-            Point pos = e.GetPosition(this); // get the position of the event
+            Point p = e.GetPosition(this); // get absolute position of the mouse
 
             double delta = e.Delta > 0 ? 1.1 : 0.9; // determine zoom direction
-            double zf = this._zoomFactor; // save current zoom factor
+            double zf = this._zoomFactor;           // save current zoom factor
 
-            // calculate the position based on the current zoom factor and origin
-            double x = (pos.X - this._origin.X) / zf;
-            double y = (pos.Y - this._origin.Y) / zf;
-
+            // recalculate position based on current zoom factor and origin
+            Point pos = this._GetPositions(p);
+         
             // update zoom factor
             this._zoomFactor *= delta; 
             this._zoomFactor = Math.Clamp(this._zoomFactor, 0.1, 12.0); // clamp zoom factor to a range
 
             // update origin
-            double ox = pos.X - x * this._zoomFactor; 
-            double oy = pos.Y - y * this._zoomFactor;
+            double ox = p.X - pos.X * this._zoomFactor; 
+            double oy = p.Y - pos.Y * this._zoomFactor;
             this._origin = new Point(ox, oy);
 
             this.InvalidateVisual();
@@ -355,6 +353,11 @@ namespace AntennaReader
         #endregion
 
         #region Helper Function (Get Positions)
+        /// <summary>
+        /// converts absolute position of the mouse to a position on the diagram based on origin and zoom factor
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <returns></returns>
         private Point _GetPositions(Point pos)
         {
             double x = (pos.X - this._origin.X) / this._zoomFactor;
@@ -365,45 +368,65 @@ namespace AntennaReader
 
         #region Helper Function (is Mouse Inside Ellipse)
         private bool _IsInsideEllipse(Point pos)
-        {
+        {   
+            // check if start and end points are defined
             if (this._startPoint == null || this._endPoint == null)
             {
-                return false;
+                return false; // if diagram is not defined -> return false
             }
+            // define a rectangle using start and end points
             Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+            // calculate center 
             Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+            // define ellipse
             EllipseGeometry ellipse = new EllipseGeometry(center, rect.Width / 2, rect.Height / 2);
+            // does ellipse contain the position?
             return ellipse.FillContains(pos);
         }
         #endregion
 
         #region Helper Function (Get Resize Direction)
+        /// <summary>
+        /// determines the correct resize edge based on the position 
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <returns></returns>
         private string _GetResizeDirection(Point pos)
         {
+            // check if start and end points are defined
             if (this._startPoint == null || this._endPoint == null)
             {
-                return "";
+                return ""; // if diagram is not defined -> return empty string
             }
+            // define a rectangle using start and end points
             Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+            // define threshold for edge detection (10 pixels)
             const double threshold = 10.0;
 
+            // Note : coordinate system is : top-left (0,0), bottom-right (width, height)
+            // pos between top and bottom edge
             if (pos.Y >= rect.Top && pos.Y <= rect.Bottom)
             {
+                // and near left edge?
                 if (Math.Abs(pos.X - rect.Left) <= threshold)
                 {
                     return "Left";
                 }
+                // and near right edge?
                 if (Math.Abs(pos.X - rect.Right) <= threshold)
                 {
                     return "Right";
                 }
             }
+            // pos between left and right edge
             if (pos.X >= rect.Left && pos.X <= rect.Right)
             {
+                // and near bottom edge?
                 if (Math.Abs(pos.Y - rect.Bottom) <= threshold)
                 {
                     return "Bottom";
                 }
+                // and near top edge?
                 if (Math.Abs(pos.Y - rect.Top) <= threshold)
                 {
                     return "Top";
@@ -414,13 +437,19 @@ namespace AntennaReader
         #endregion
 
         #region Helper Function (Set Cursor Icon)
+        /// <summary>
+        /// determines the correct cursor icon based on the position
+        /// </summary>
+        /// <param name="pos"></param>
         private void _SetCursorIcon(Point pos)
         {
+            // if diagram is locked -> set arrow cursor and return
             if (this._isLocked)
             {
                 this.Cursor = Cursors.Arrow;
                 return;
             }
+            // if mouse if near an edge -> set resize cursor
             string edge = this._GetResizeDirection(pos);
             if (edge == "Left" || edge == "Right")
             {
@@ -430,10 +459,12 @@ namespace AntennaReader
             {
                 this.Cursor = Cursors.SizeNS;
             }
+            // if mouse is inside ellipse -> set move cursor
             else if (this._IsInsideEllipse(pos))
             {
                 this.Cursor = Cursors.SizeAll;
             }
+            // default -> set arrow cursor
             else
             {
                 this.Cursor = Cursors.Arrow;
@@ -442,6 +473,10 @@ namespace AntennaReader
         #endregion
 
         #region Helper Function (Set Background Image)
+        /// <summary>
+        /// sets the background image
+        /// </summary>
+        /// <param name="filePath"></param>
         public void SetBackgroundImage(string filePath)
         {
             this._backgroundImage = new BitmapImage(new Uri(filePath, UriKind.Absolute));
@@ -450,185 +485,244 @@ namespace AntennaReader
         #endregion
 
         #region Helper Function (Draw)
+        /// <summary>
+        /// draws the diagram 
+        /// </summary>
+        /// <param name="pos"></param>
         private void Draw(Point pos)
-        {
+        {   
+            // check if start point is defined
             if (this._startPoint == null)
             {
                 return;
             }
+            // update the endpoint to the current position
             this._endPoint = pos;
+            // update visuals
+            this.InvalidateVisual();
         }
         #endregion
 
         #region Helper Function (Move)
+        /// <summary>
+        /// Moves the diagram
+        /// </summary>
+        /// <param name="pos"></param>
         private void Move(Point pos)
-        {
+        {   
+            // check if diagram is defined or move start point exists
             if (this._moveStartPoint == null || this._startPoint == null || this._endPoint == null)
             {
                 return;
             }
-            double deltaX = pos.X - this._moveStartPoint.Value.X;
-            double deltaY = pos.Y - this._moveStartPoint.Value.Y;
+            // calculate distance in x and y
+            double dx = pos.X - this._moveStartPoint.Value.X;
+            double dy = pos.Y - this._moveStartPoint.Value.Y;
 
-            this._startPoint = new Point(this._startPoint.Value.X + deltaX, this._startPoint.Value.Y + deltaY);
-            this._endPoint = new Point(this._endPoint.Value.X + deltaX, this._endPoint.Value.Y + deltaY);
-
+            // update start and end point of diagram
+            this._startPoint = new Point(this._startPoint.Value.X + dx, this._startPoint.Value.Y + dy);
+            this._endPoint = new Point(this._endPoint.Value.X + dx, this._endPoint.Value.Y + dy);
+            // update the move start point
             this._moveStartPoint = pos;
+            // update point measurements
             this._UpdateMeasurements();
+            // update visuals
+            this.InvalidateVisual();
         }
         #endregion
 
         #region Helper Function (Resize)
+        /// <summary>
+        /// handles resize
+        /// </summary>
+        /// <param name="pos"></param>
         private void Resize(Point pos)
         {
+            // check if diagram is defined and resize direction exists
             if (this._startPoint == null || this._endPoint == null || string.IsNullOrEmpty(this._resizeDirection))
             {
                 return;
             }
+            // store current start and end points
             Point start = this._startPoint.Value;
             Point end = this._endPoint.Value;
 
+            // update start or end point based on resize direction
             if (this._resizeDirection == "Left")
             {
-                start = new Point(pos.X, start.Y);
+                start = new Point(pos.X, start.Y); // left -> change x component of start point
             }
             else if (this._resizeDirection == "Right")
             {
-                end = new Point(pos.X, end.Y);
+                end = new Point(pos.X, end.Y); // right -> change x component of end point
             }
             else if (this._resizeDirection == "Top")
             {
-                start = new Point(start.X, pos.Y);
+                start = new Point(start.X, pos.Y); // top -> change y component of start point
             }
             else if (this._resizeDirection == "Bottom")
             {
-                end = new Point(end.X, pos.Y);
+                end = new Point(end.X, pos.Y); // bottom -> change y component of end point
             }
-
+            //update start and end points
             this._startPoint = start;
             this._endPoint = end;
+            // update point measurements
             this._UpdateMeasurements();
+            // update visuals
+            this.InvalidateVisual();
         }
         #endregion
 
         #region Helper Function (Delete Diagram)
+        /// <summary>
+        /// deletes the diagram
+        /// </summary>
         public void DeleteDiagram()
         {
+            // reset all attributes of diagram
             this._isLocked = false;
             this._isDrawing = false;
             this._isMoving = false;
             this._isResizing = false;
-
             this._startPoint = null;
             this._endPoint = null;
             this._moveStartPoint = null;
             this._moveEndPoint = null;
             this.measurements.Clear();
-
             this._resizeDirection = "";
-
+            // update visuals
             this.InvalidateVisual();
         }
         #endregion
 
         #region Helper Function (Delete Background Image)
+        /// <summary>
+        /// deletes the background image
+        /// </summary>
         public void DeleteBackgroundImage()
         {
+            // reset background image and rotation
             this._backgroundImage = null;
             this._backgroundRotation = 0.0;
+            // update visuals
             InvalidateVisual();
         }
         #endregion
 
         #region Helper Function (Delete Measurments)
+        /// <summary>
+        /// deletes the measured points
+        /// </summary>
         public void DeleteMeasurements()
         {
+            // reset measurements
             this.measurements.Clear();
+            // update visuals
             InvalidateVisual();
         }
         #endregion
 
         #region Helper Function (Measure Point)
+        /// <summary>
+        /// measures the closest angle, db value and descrete position based on the given position
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <returns></returns>
         private (int closestAngle, double dbValue, Point point)? MeasurePoint(Point pos)
         {
+            // check if diagram is defined
             if (this._startPoint == null || this._endPoint == null)
             {
                 return null;
             }
+            // define a rectangle using start and end points
             Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+            // calculate center
             Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
 
+            // normalized x and y components
             double x = (pos.X - center.X) / (rect.Width / 2);
             double y = (pos.Y - center.Y) / (rect.Height / 2);
-            double r = Math.Sqrt(x * x + y * y);
+            // normalized distance from center
+            double distance = Math.Sqrt(x * x + y * y);
 
+            // 1. calculate db value based on distance
+            double dbValue = 30.0;
+            if (distance > 0)
+            {
+                dbValue = Math.Max(0, Math.Min(-20 * Math.Log10(distance), 30));
+            }
+
+            // 2. find closest angle to the recorded position
             double lowestDiviation = double.PositiveInfinity;
             int closestAngle = 0;
-            if (r != 0)
+            // check distance is not zero
+            if (distance != 0) 
             {
                 for (int a = 0; a <= 360; a += 10)
                 {
-                    int angle = a;
-                    double angleRad = (angle - 90) * Math.PI / 180.0;
-                    double dotProduct = x * Math.Cos(angleRad) + y * Math.Sin(angleRad);
-
+                    int angle = a; // current angle
+                    double angleRad = (angle - 90) * Math.PI / 180.0; // current angle in radian
+                    double dotProduct = x * Math.Cos(angleRad) + y * Math.Sin(angleRad); // dot product
+                    // check if dot product is negative
                     if (dotProduct < 0)
                     {
-                        angle = (angle + 180) % 360;
+                        angle = (angle + 180) % 360; // reverse angle
                         dotProduct = -dotProduct;
                     }
 
-                    double deviation = 1 - Math.Abs(dotProduct / r);
-                    if (deviation < lowestDiviation)
+                    double deviation = 1 - Math.Abs(dotProduct / distance); // calculate deviation
+                    if (deviation < lowestDiviation) // is it the lowest deviation so far?
                     {
-                        lowestDiviation = deviation;
-                        closestAngle = angle;
+                        lowestDiviation = deviation; // update lowest deviation
+                        closestAngle = angle; // update closest angle
                     }
                 }
             }
 
-            double dbValue = 30.0;
-            if (r > 0)
-            {
-                dbValue = Math.Max(0, Math.Min(-20 * Math.Log10(r), 30));
-            }
-
+            // 3. calculate the descrete position based on closest angle and db value
             double rad = (closestAngle - 90) * Math.PI / 180.0;
             double linear = Math.Pow(10, -dbValue / 20);
             double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
             double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
-            Point point = new Point(px, py);
 
-            return (closestAngle, dbValue, point);
+            Point descPoint = new Point(px, py);
+
+            return (closestAngle, dbValue, descPoint);
         }
         #endregion
 
         #region Helper Function (Update Measurments)
         private void _UpdateMeasurements()
         {
+            // check if diagram is defined
             if (this._startPoint == null || this._endPoint == null)
             {
                 return;
             }
-
-            Dictionary<int, (double, Point)> updatedMeasurements = new Dictionary<int, (double, Point)>();
+            // define rectangle using start and end points
             Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+            // calculate center
             Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
 
+            // define a new dictionary to store measurements
+            Dictionary<int, (double, Point)> updatedMeasurements = new Dictionary<int, (double, Point)>();
             foreach (KeyValuePair<int, (double, Point)> entry in this.measurements)
             {
+                // angle and db value stay the same
                 int angle = entry.Key;
                 double dbValue = entry.Value.Item1;
-
+                // recalculate positions based on new diagram dimentions
                 double rad = (angle - 90) * Math.PI / 180.0;
                 double linear = Math.Pow(10, -dbValue / 20);
                 double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
                 double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
-
                 Point point = new Point(px, py);
 
                 updatedMeasurements[angle] = (dbValue, point);
             }
+            // update measurements
             this.measurements = updatedMeasurements;
         }
         #endregion
