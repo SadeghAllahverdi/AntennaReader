@@ -20,7 +20,7 @@ namespace AntennaReader
         private bool _isMoving = false;     // move state
         private bool _isResizing = false;   // resize state
         private bool _isLocked = false;     // locked state
-        public bool IsLocked { get=> _isLocked; set=> _isLocked = value; } // property
+        public bool IsLocked { get=> _isLocked; set=> _isLocked = value; } // property -> is diagram locked?
         #endregion
 
         #region Attributes
@@ -38,7 +38,11 @@ namespace AntennaReader
         private double _zoomFactor = 1.0;               // zoom factor
 
         private List<int> _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };    // contour levels in dB
+        
+        private bool _isPerformingUndoRedo = false; // are we doing undo-redo?
 
+        public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
+        public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store points
         #endregion
 
@@ -102,6 +106,12 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void DrawingCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+
+            if (this._isDrawing || this._isMoving || this._isResizing)
+            {
+                this._SaveSate(); // save state
+            }
+
             this._isDrawing = false;    // reset draw state
             this._isMoving = false;     // reset move state
             this._isResizing = false;   // reset resize state
@@ -127,6 +137,8 @@ namespace AntennaReader
                 (int closestAngle, double dbValue, Point point)? result = this.MeasurePoint(pos);
                 if (result != null) // if measurement is valid -> store it and update visuals
                 {
+                    this._SaveSate(); // save state
+
                     int angle = result.Value.closestAngle;
                     double dbValue = result.Value.dbValue;
                     Point point = result.Value.point;
@@ -349,6 +361,98 @@ namespace AntennaReader
             // remove all transforms
             dc.Pop();
             dc.Pop();
+        }
+        #endregion
+
+        #region Helper Function (Save Diagram State)
+        /// <summary>
+        /// saves the current states of the diagram
+        /// </summary>
+        private void _SaveSate()
+        {
+            // check if we are performing undo-redo -> do not save state
+            if (this._isPerformingUndoRedo)
+            {
+                return;
+            }
+            // create a new diagram state
+            DiagramState currentState = new DiagramState(
+                this._startPoint,
+                this._endPoint,
+                this.measurements,
+                this._isLocked
+            );
+
+            this.UndoStack.Push(currentState); // push current state to undo stack
+            this.RedoStack.Clear(); // clear redo stack
+        }
+        #endregion
+
+        #region Helper function (Undo)
+        /// <summary>
+        /// Undo the last action
+        /// </summary>
+        public void Undo()
+        { 
+            // check if undo stack is empty
+            if (this.UndoStack.Count == 0)
+            {
+                return;
+            }
+            // set flag -> performing undo-redo
+            this._isPerformingUndoRedo = true; 
+            // save current state to redo stack
+            DiagramState currentState = new DiagramState(
+               this._startPoint,
+               this._endPoint,
+               this.measurements,
+               this._isLocked
+            );
+            this.RedoStack.Push(currentState);
+            // pop undo stack -> previous state
+            DiagramState prevState = this.UndoStack.Pop(); 
+            // reset attributes to previous state
+            this._startPoint = prevState.StartPoint;
+            this._endPoint = prevState.EndPoint;
+            this.measurements = new Dictionary<int, (double, Point)>(prevState.Measurements);
+            this._isLocked = prevState.IsLocked;
+
+            this._isPerformingUndoRedo = false; // reset flag -> not performing undo-redo
+            this.InvalidateVisual(); // update visuals
+        }
+        #endregion
+
+        #region Helper function (Redo)
+        /// <summary>
+        /// Redo the last action
+        /// </summary>
+        public void Redo()
+        {
+            // check if redo stack is empty
+            if (this.RedoStack.Count == 0)
+            {
+                return;
+            }
+            // set flag -> performing undo-redo
+            this._isPerformingUndoRedo = true; 
+            // save current state to redo stack
+            DiagramState currentState = new DiagramState(
+               this._startPoint,
+               this._endPoint,
+               this.measurements,
+               this._isLocked
+            );
+            // pop undo stack -> previous state
+            this.UndoStack.Push(currentState);
+            DiagramState nextState = this.RedoStack.Pop(); 
+            // reset attributes to previous state
+            this._startPoint = nextState.StartPoint;
+            this._endPoint = nextState.EndPoint;
+            this.measurements = new Dictionary<int, (double, Point)>(nextState.Measurements);
+            this._isLocked = nextState.IsLocked;
+
+            this._isPerformingUndoRedo = false; // reset flag -> not performing undo-redo
+            this.InvalidateVisual(); // update visuals
         }
         #endregion
 
@@ -580,6 +684,7 @@ namespace AntennaReader
         /// </summary>
         public void DeleteDiagram()
         {
+            this._SaveSate(); // save state
             // reset all attributes of diagram
             this._isLocked = false;
             this._isDrawing = false;
@@ -616,6 +721,7 @@ namespace AntennaReader
         /// </summary>
         public void DeleteMeasurements()
         {
+            this._SaveSate(); // save state
             // reset measurements
             this.measurements.Clear();
             // update visuals

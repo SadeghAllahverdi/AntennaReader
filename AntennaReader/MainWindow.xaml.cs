@@ -262,5 +262,42 @@ namespace AntennaReader
         }
         #endregion
 
+        #region Click -> Undo
+        /// <summary>
+        /// performs undo action
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Undo_Click(object sender, RoutedEventArgs e)
+        {
+            if (drawingCanvas.UndoStack.Count > 0)
+            {
+                drawingCanvas.Undo();
+            }
+            else
+            {
+                MessageBox.Show("Nothing to undo!");
+            }
+        }
+        #endregion
+
+        #region Click -> Redo
+        /// <summary>
+        /// performs undo action
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Redo_Click(object sender, RoutedEventArgs e)
+        {
+            if (drawingCanvas.RedoStack.Count > 0)
+            {
+                drawingCanvas.Redo();
+            }
+            else
+            {
+                MessageBox.Show("Nothing to Redo!");
+            }
+        }
+        #endregion
     }
 }
