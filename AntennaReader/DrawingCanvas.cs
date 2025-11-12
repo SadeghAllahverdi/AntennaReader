@@ -249,14 +249,21 @@ namespace AntennaReader
             // draw background image if available
             if (this._backgroundImage != null)
             {
+                // image width and height
                 double bgWidth = this._backgroundImage.PixelWidth;
                 double bgHeight = this._backgroundImage.PixelHeight;
+                // start point to draw bg image
+                double bgDrawX = (this.ActualWidth - bgWidth) / 2;
+                double bgDrawY = (this.ActualHeight - bgHeight) / 2;
+                // center of bg image
+                double bgCenterX = bgDrawX + bgWidth / 2;
+                double bgCenterY = bgDrawY + bgHeight / 2;
 
-                dc.PushTransform(new TranslateTransform(bgWidth / 2, bgHeight / 2));    // shift coordinate system to image center
+                dc.PushTransform(new TranslateTransform(bgCenterX, bgCenterY));    // shift coordinate system to image center
                 dc.PushTransform(new RotateTransform(this._backgroundRotation));        // rotate coordinate system
-                dc.PushTransform(new TranslateTransform(-bgWidth / 2, -bgHeight / 2));  // reset coordinate system
-
-                dc.DrawImage(this._backgroundImage, new Rect(0, 0, bgWidth, bgHeight)); // draw image
+                dc.PushTransform(new TranslateTransform(-bgCenterX, -bgCenterY));  // reset coordinate system
+                // draw image
+                dc.DrawImage(this._backgroundImage, new Rect(bgDrawX, bgDrawY, bgWidth, bgHeight)); 
                 // remove all transforms
                 dc.Pop(); 
                 dc.Pop();
