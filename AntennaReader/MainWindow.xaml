@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:AntennaReader"
         mc:Ignorable="d"
         Title="PlotLeser" 
-        Height="500" Width="400"
+        Height="800" Width="1000"
         WindowStartupLocation="CenterScreen">
     <Grid>
         <Grid.RowDefinitions>
@@ -27,6 +27,10 @@
                 <MenuItem Header="Delete" Click="DeleteDiagram_Click"/>
                 <MenuItem Header="Lock" Click="LockDiagram_Click"/>
                 <MenuItem Header="Delete All Points" Click="DeletePoints_Click"/>
+            </MenuItem>
+            <MenuItem Header="Actions">
+                <MenuItem Header="Undo" Click="Undo_Click"/>
+                <MenuItem Header="Redo" Click="Redo_Click"/>
             </MenuItem>
         </Menu>
 
