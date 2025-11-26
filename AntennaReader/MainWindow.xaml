@@ -41,6 +41,7 @@
                 <MenuItem Header="Delete" Click="DeleteDiagram_Click"/>
                 <MenuItem Header="Lock" Click="LockDiagram_Click"/>
                 <MenuItem Header="Delete All Points" Click="DeletePoints_Click"/>
+                <MenuItem Header="Interpolate Points" Click="InterpolatePoints_Click"/>
             </MenuItem>
             <MenuItem Header="Actions">
                 <MenuItem Header="Undo" Click="Undo_Click"/>

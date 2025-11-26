@@ -292,6 +292,24 @@ namespace AntennaReader
         }
         #endregion
 
+        #region Click -> Interpolate Points
+        /// <summary>
+        /// handles when "Interpolate Points" is clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void InterpolatePoints_Click(object sender, RoutedEventArgs e)
+        {
+            if (drawingCanvas.measurements.Count == 0)
+            {
+                MessageBox.Show("Please add at least one point!");
+                return;
+            }
+            drawingCanvas.InterpolateMeasurements();
+            MessageBox.Show("Missing points are interpolated!", "Success");
+        }
+        #endregion
+
         #region Click -> Undo
         /// <summary>
         /// performs undo action

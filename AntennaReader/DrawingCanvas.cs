@@ -626,6 +626,7 @@ namespace AntennaReader
             {
                 return;
             }
+            this._SaveSate();
             // calculate distance in x and y
             double dx = pos.X - this._moveStartPoint.Value.X;
             double dy = pos.Y - this._moveStartPoint.Value.Y;
@@ -773,7 +774,7 @@ namespace AntennaReader
             // check distance is not zero
             if (distance != 0) 
             {
-                for (int a = 0; a <= 360; a += 10)
+                for (int a = 0; a < 360; a += 10)
                 {
                     int angle = a; // current angle
                     double angleRad = (angle - 90) * Math.PI / 180.0; // current angle in radian
@@ -837,6 +838,96 @@ namespace AntennaReader
             }
             // update measurements
             this.measurements = updatedMeasurements;
+        }
+        #endregion
+
+        #region Helper Function (Interpolate Measurments)
+        /// <summary>
+        /// Uses Linear Interpolation to fill in missing measurement points
+        /// </summary>
+        public void InterpolateMeasurements() 
+        {
+            if (this.measurements.Count == 0 || this._startPoint == null || this._endPoint == null)
+            {
+                return;
+            }
+            // calculate center point
+            Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+            Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+            // list measured angles
+            var result = new Dictionary<int, (double, Point)>(this.measurements);
+            var measuredAngles = result.Keys.OrderBy(a => a).ToList(); 
+            // iterate through all angles
+            for (int currentAngle = 0; currentAngle < 360; currentAngle += 10)
+            {
+                // if current angle was measured -> continue
+                if (measuredAngles.Contains(currentAngle))
+                {
+                    continue;
+                }
+                // initialize lower and upper bounds
+                int lowerAngle = -1;
+                int upperAngle = -1;
+                // set lower and upper bounds
+                foreach (var angle in measuredAngles)
+                {
+                    if (angle < currentAngle) 
+                    {
+                        lowerAngle = angle;
+                    }
+                    if (angle > currentAngle && upperAngle == -1)
+                    {
+                        upperAngle = angle;
+                    }
+                }
+                // no lower bound
+                if (lowerAngle == -1)
+                {
+                    
+                    double db = result[upperAngle].Item1;
+                    // recalculate position based on angle and interpolated db value
+                    double rad = (currentAngle - 90) * Math.PI / 180.0;
+                    double linear = Math.Pow(10, -db / 20);
+                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
+                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
+                    Point point = new Point(px, py);
+
+                    result[currentAngle] = (db, point);
+                }
+                // no upper bound
+                else if (upperAngle == -1)
+                {
+                    double db = result[lowerAngle].Item1;
+
+                    double rad = (currentAngle - 90) * Math.PI / 180.0;
+                    double linear = Math.Pow(10, -db / 20);
+                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
+                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
+                    Point point = new Point(px, py);
+
+                    result[currentAngle] = (db, point);
+                }
+                // interpolation possible
+                else
+                {
+                    // calculate interpolation factor
+                    double alpha = (double)(currentAngle - lowerAngle) / (upperAngle - lowerAngle);
+                    // interpolate db values
+                    double lowerDb = result[lowerAngle].Item1;
+                    double upperDb = result[upperAngle].Item1;
+                    double interpolatedDb = lowerDb + alpha * (upperDb - lowerDb);
+                    // recalculate position based on angle and interpolated db value
+                    double rad = (currentAngle - 90) * Math.PI / 180.0;
+                    double linear = Math.Pow(10, -interpolatedDb / 20);
+                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
+                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
+                    Point point = new Point(px, py);
+                    // store interpolated value
+                    result[currentAngle] = (interpolatedDb, point);
+                }
+            }
+            this.measurements = result;
+            this.InvalidateVisual();
         }
         #endregion
     }
