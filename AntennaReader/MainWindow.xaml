@@ -8,6 +8,20 @@
         Title="PlotLeser" 
         Height="800" Width="1000"
         WindowStartupLocation="CenterScreen">
+    <Window.InputBindings>
+        <KeyBinding Key="O" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenImageCommand}"/>
+        <KeyBinding Key="D" Modifiers="Ctrl" Command="{x:Static local:MainWindow.DeleteImageCommand}"/>
+        
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{x:Static local:MainWindow.SaveCSVCommand}"/>
+        <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SavePATCommand}"/>
+        
+        <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
+        <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
+        <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
+
+        <KeyBinding Key="Z" Modifiers="Ctrl" Command="{x:Static local:MainWindow.UndoCommand}"/>
+        <KeyBinding Key="Y" Modifiers="Ctrl" Command="{x:Static local:MainWindow.RedoCommand}"/>
+    </Window.InputBindings>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

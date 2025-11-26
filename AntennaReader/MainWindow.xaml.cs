@@ -33,10 +33,40 @@ namespace AntennaReader
         );
         #endregion
 
+        #region Command Bindings
+        public static RoutedUICommand OpenImageCommand = new RoutedUICommand();
+        public static RoutedUICommand DeleteImageCommand = new RoutedUICommand();
+        
+        public static RoutedUICommand SaveCSVCommand = new RoutedUICommand();
+        public static RoutedUICommand SavePATCommand = new RoutedUICommand();
+
+        public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
+        public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
+        public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
+
+        public static RoutedUICommand UndoCommand = new RoutedUICommand();
+        public static RoutedUICommand RedoCommand = new RoutedUICommand();
+        #endregion
+
         #region Constructor
         public MainWindow()
         {
             InitializeComponent();
+
+            // connect command bindings to handler functions
+            CommandBindings.Add(new CommandBinding(OpenImageCommand, OpenImage_Click));
+            CommandBindings.Add(new CommandBinding(DeleteImageCommand, DeleteImage_Click));
+            
+            CommandBindings.Add(new CommandBinding(SaveCSVCommand, SaveCSV_Click));
+            CommandBindings.Add(new CommandBinding(SavePATCommand, SavePAT_Click));
+            
+            CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
+            CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
+            CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
+
+            CommandBindings.Add(new CommandBinding(UndoCommand, Undo_Click));
+            CommandBindings.Add(new CommandBinding(RedoCommand, Redo_Click));
+
             // create the base directory if it doesn't exist
             try
             {
