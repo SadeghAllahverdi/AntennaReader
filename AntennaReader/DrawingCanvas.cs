@@ -260,7 +260,7 @@ namespace AntennaReader
                 double bgCenterY = bgDrawY + bgHeight / 2;
 
                 dc.PushTransform(new TranslateTransform(bgCenterX, bgCenterY));    // shift coordinate system to image center
-                dc.PushTransform(new RotateTransform(this._backgroundRotation));        // rotate coordinate system
+                dc.PushTransform(new RotateTransform(this._backgroundRotation));   // rotate coordinate system
                 dc.PushTransform(new TranslateTransform(-bgCenterX, -bgCenterY));  // reset coordinate system
                 // draw image
                 dc.DrawImage(this._backgroundImage, new Rect(bgDrawX, bgDrawY, bgWidth, bgHeight)); 
