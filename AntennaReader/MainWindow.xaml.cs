@@ -36,7 +36,7 @@ namespace AntennaReader
         #region Command Bindings
         public static RoutedUICommand OpenImageCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteImageCommand = new RoutedUICommand();
-        
+
         public static RoutedUICommand SaveCSVCommand = new RoutedUICommand();
         public static RoutedUICommand SavePATCommand = new RoutedUICommand();
 
@@ -56,10 +56,10 @@ namespace AntennaReader
             // connect command bindings to handler functions
             CommandBindings.Add(new CommandBinding(OpenImageCommand, OpenImage_Click));
             CommandBindings.Add(new CommandBinding(DeleteImageCommand, DeleteImage_Click));
-            
+
             CommandBindings.Add(new CommandBinding(SaveCSVCommand, SaveCSV_Click));
             CommandBindings.Add(new CommandBinding(SavePATCommand, SavePAT_Click));
-            
+
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
@@ -134,7 +134,7 @@ namespace AntennaReader
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void SaveCSV_Click(object sender, RoutedEventArgs e)
-        { 
+        {
             // if not all points are measured
             if (drawingCanvas.measurements.Count != 36)
             {
@@ -151,7 +151,7 @@ namespace AntennaReader
             {
                 return;
             }
-            
+
             Dictionary<int, (double, Point)> measurements = drawingCanvas.measurements; // store current measurements
             List<string> row = new List<string> { antennaID }; // first column value -> antenna ID
             for (int angle = 0; angle < 360; angle += 10) // add dB values for each angle
@@ -209,7 +209,7 @@ namespace AntennaReader
                     MessageBox.Show("CSV file is empty!");
                     return;
                 }
-     
+
                 int fileCount = 0;
                 // process each line (skip header)
                 for (int i = 1; i < lines.Length; i++)
@@ -289,6 +289,24 @@ namespace AntennaReader
         {
             drawingCanvas.DeleteMeasurements();
             MessageBox.Show("All points deleted!", "Success");
+        }
+        #endregion
+
+        #region Click -> Interpolate Points
+        /// <summary>
+        /// handles when "Interpolate Points" is clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void InterpolatePoints_Click(object sender, RoutedEventArgs e)
+        {
+            if (drawingCanvas.measurements.Count == 0)
+            {
+                MessageBox.Show("Please add at least one point!");
+                return;
+            }
+            drawingCanvas.InterpolateMeasurements();
+            MessageBox.Show("Missing points are interpolated!", "Success");
         }
         #endregion
 
