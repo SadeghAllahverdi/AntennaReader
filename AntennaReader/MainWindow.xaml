@@ -11,10 +11,10 @@
     <Window.InputBindings>
         <KeyBinding Key="O" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenImageCommand}"/>
         <KeyBinding Key="D" Modifiers="Ctrl" Command="{x:Static local:MainWindow.DeleteImageCommand}"/>
-        
+
         <KeyBinding Key="S" Modifiers="Ctrl" Command="{x:Static local:MainWindow.SaveCSVCommand}"/>
         <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SavePATCommand}"/>
-        
+
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
@@ -41,6 +41,7 @@
                 <MenuItem Header="Delete" Click="DeleteDiagram_Click"/>
                 <MenuItem Header="Lock" Click="LockDiagram_Click"/>
                 <MenuItem Header="Delete All Points" Click="DeletePoints_Click"/>
+                <MenuItem Header="Interpolate Points" Click="InterpolatePoints_Click"/>
             </MenuItem>
             <MenuItem Header="Actions">
                 <MenuItem Header="Undo" Click="Undo_Click"/>
