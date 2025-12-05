@@ -24,6 +24,7 @@ namespace AntennaReader.Models
         // 2. db value
         public double DbValue { get; set; }
         // 3. position
-        public Point Position { get; set; } = new Point();
+        public double PosX { get; set; }
+        public double PosY { get; set; }
     }
 }
