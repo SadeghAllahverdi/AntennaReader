@@ -20,7 +20,7 @@ namespace AntennaReader
         private bool _isMoving = false;     // move state
         private bool _isResizing = false;   // resize state
         private bool _isLocked = false;     // locked state
-        public bool IsLocked { get=> _isLocked; set=> _isLocked = value; } // property -> is diagram locked?
+        public bool IsLocked { get => _isLocked; set => _isLocked = value; } // property -> is diagram locked?
         #endregion
 
         #region Attributes
@@ -38,7 +38,7 @@ namespace AntennaReader
         private double _zoomFactor = 1.0;               // zoom factor
 
         private List<int> _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };    // contour levels in dB
-        
+
         private bool _isPerformingUndoRedo = false; // are we doing undo-redo?
 
         public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
@@ -75,7 +75,7 @@ namespace AntennaReader
             Point pos = this._GetPositions(p); // recalculate position based on current origin and zoom factor
             // determine the current state
             // 1. if not move or draw or resize -> set cursor icon
-            if (!this._isMoving && !this._isDrawing && !this._isResizing) 
+            if (!this._isMoving && !this._isDrawing && !this._isResizing)
             {
                 this._SetCursorIcon(pos);
                 return;
@@ -196,13 +196,13 @@ namespace AntennaReader
 
             // recalculate position based on current zoom factor and origin
             Point pos = this._GetPositions(p);
-         
+
             // update zoom factor
-            this._zoomFactor *= delta; 
+            this._zoomFactor *= delta;
             this._zoomFactor = Math.Clamp(this._zoomFactor, 0.1, 12.0); // clamp zoom factor to a range
 
             // update origin
-            double ox = p.X - pos.X * this._zoomFactor; 
+            double ox = p.X - pos.X * this._zoomFactor;
             double oy = p.Y - pos.Y * this._zoomFactor;
             this._origin = new Point(ox, oy);
 
@@ -260,12 +260,12 @@ namespace AntennaReader
                 double bgCenterY = bgDrawY + bgHeight / 2;
 
                 dc.PushTransform(new TranslateTransform(bgCenterX, bgCenterY));    // shift coordinate system to image center
-                dc.PushTransform(new RotateTransform(this._backgroundRotation));        // rotate coordinate system
+                dc.PushTransform(new RotateTransform(this._backgroundRotation));   // rotate coordinate system
                 dc.PushTransform(new TranslateTransform(-bgCenterX, -bgCenterY));  // reset coordinate system
                 // draw image
-                dc.DrawImage(this._backgroundImage, new Rect(bgDrawX, bgDrawY, bgWidth, bgHeight)); 
+                dc.DrawImage(this._backgroundImage, new Rect(bgDrawX, bgDrawY, bgWidth, bgHeight));
                 // remove all transforms
-                dc.Pop(); 
+                dc.Pop();
                 dc.Pop();
                 dc.Pop();
             }
@@ -400,14 +400,14 @@ namespace AntennaReader
         /// Undo the last action
         /// </summary>
         public void Undo()
-        { 
+        {
             // check if undo stack is empty
             if (this.UndoStack.Count == 0)
             {
                 return;
             }
             // set flag -> performing undo-redo
-            this._isPerformingUndoRedo = true; 
+            this._isPerformingUndoRedo = true;
             // save current state to redo stack
             DiagramState currentState = new DiagramState(
                this._startPoint,
@@ -417,7 +417,7 @@ namespace AntennaReader
             );
             this.RedoStack.Push(currentState);
             // pop undo stack -> previous state
-            DiagramState prevState = this.UndoStack.Pop(); 
+            DiagramState prevState = this.UndoStack.Pop();
             // reset attributes to previous state
             this._startPoint = prevState.StartPoint;
             this._endPoint = prevState.EndPoint;
@@ -441,7 +441,7 @@ namespace AntennaReader
                 return;
             }
             // set flag -> performing undo-redo
-            this._isPerformingUndoRedo = true; 
+            this._isPerformingUndoRedo = true;
             // save current state to redo stack
             DiagramState currentState = new DiagramState(
                this._startPoint,
@@ -451,7 +451,7 @@ namespace AntennaReader
             );
             // pop undo stack -> previous state
             this.UndoStack.Push(currentState);
-            DiagramState nextState = this.RedoStack.Pop(); 
+            DiagramState nextState = this.RedoStack.Pop();
             // reset attributes to previous state
             this._startPoint = nextState.StartPoint;
             this._endPoint = nextState.EndPoint;
@@ -479,7 +479,7 @@ namespace AntennaReader
 
         #region Helper Function (is Mouse Inside Ellipse)
         private bool _IsInsideEllipse(Point pos)
-        {   
+        {
             // check if start and end points are defined
             if (this._startPoint == null || this._endPoint == null)
             {
@@ -601,7 +601,7 @@ namespace AntennaReader
         /// </summary>
         /// <param name="pos"></param>
         private void Draw(Point pos)
-        {   
+        {
             // check if start point is defined
             if (this._startPoint == null)
             {
@@ -620,12 +620,13 @@ namespace AntennaReader
         /// </summary>
         /// <param name="pos"></param>
         private void Move(Point pos)
-        {   
+        {
             // check if diagram is defined or move start point exists
             if (this._moveStartPoint == null || this._startPoint == null || this._endPoint == null)
             {
                 return;
             }
+            this._SaveSate();
             // calculate distance in x and y
             double dx = pos.X - this._moveStartPoint.Value.X;
             double dy = pos.Y - this._moveStartPoint.Value.Y;
@@ -771,9 +772,9 @@ namespace AntennaReader
             double lowestDiviation = double.PositiveInfinity;
             int closestAngle = 0;
             // check distance is not zero
-            if (distance != 0) 
+            if (distance != 0)
             {
-                for (int a = 0; a <= 360; a += 10)
+                for (int a = 0; a < 360; a += 10)
                 {
                     int angle = a; // current angle
                     double angleRad = (angle - 90) * Math.PI / 180.0; // current angle in radian
@@ -837,6 +838,96 @@ namespace AntennaReader
             }
             // update measurements
             this.measurements = updatedMeasurements;
+        }
+        #endregion
+
+        #region Helper Function (Interpolate Measurments)
+        /// <summary>
+        /// Uses Linear Interpolation to fill in missing measurement points
+        /// </summary>
+        public void InterpolateMeasurements()
+        {
+            if (this.measurements.Count == 0 || this._startPoint == null || this._endPoint == null)
+            {
+                return;
+            }
+            // calculate center point
+            Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+            Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+            // list measured angles
+            var result = new Dictionary<int, (double, Point)>(this.measurements);
+            var measuredAngles = result.Keys.OrderBy(a => a).ToList();
+            // iterate through all angles
+            for (int currentAngle = 0; currentAngle < 360; currentAngle += 10)
+            {
+                // if current angle was measured -> continue
+                if (measuredAngles.Contains(currentAngle))
+                {
+                    continue;
+                }
+                // initialize lower and upper bounds
+                int lowerAngle = -1;
+                int upperAngle = -1;
+                // set lower and upper bounds
+                foreach (var angle in measuredAngles)
+                {
+                    if (angle < currentAngle)
+                    {
+                        lowerAngle = angle;
+                    }
+                    if (angle > currentAngle && upperAngle == -1)
+                    {
+                        upperAngle = angle;
+                    }
+                }
+                // no lower bound
+                if (lowerAngle == -1)
+                {
+
+                    double db = result[upperAngle].Item1;
+                    // recalculate position based on angle and interpolated db value
+                    double rad = (currentAngle - 90) * Math.PI / 180.0;
+                    double linear = Math.Pow(10, -db / 20);
+                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
+                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
+                    Point point = new Point(px, py);
+
+                    result[currentAngle] = (db, point);
+                }
+                // no upper bound
+                else if (upperAngle == -1)
+                {
+                    double db = result[lowerAngle].Item1;
+
+                    double rad = (currentAngle - 90) * Math.PI / 180.0;
+                    double linear = Math.Pow(10, -db / 20);
+                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
+                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
+                    Point point = new Point(px, py);
+
+                    result[currentAngle] = (db, point);
+                }
+                // interpolation possible
+                else
+                {
+                    // calculate interpolation factor
+                    double alpha = (double)(currentAngle - lowerAngle) / (upperAngle - lowerAngle);
+                    // interpolate db values
+                    double lowerDb = result[lowerAngle].Item1;
+                    double upperDb = result[upperAngle].Item1;
+                    double interpolatedDb = lowerDb + alpha * (upperDb - lowerDb);
+                    // recalculate position based on angle and interpolated db value
+                    double rad = (currentAngle - 90) * Math.PI / 180.0;
+                    double linear = Math.Pow(10, -interpolatedDb / 20);
+                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
+                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
+                    Point point = new Point(px, py);
+                    // store interpolated value
+                    result[currentAngle] = (interpolatedDb, point);
+                }
+            }
+            this.measurements = result;
+            this.InvalidateVisual();
         }
         #endregion
     }
