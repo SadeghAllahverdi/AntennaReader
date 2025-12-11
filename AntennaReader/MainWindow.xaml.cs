@@ -22,19 +22,6 @@ namespace AntennaReader
     /// </summary>
     public partial class MainWindow : Window
     {
-        #region Attributes
-        private string _csvFile => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "AntennaReader",
-            "AntennaMeasurements.csv"
-        );
-        private string _patDir => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "AntennaReader",
-            "pat_files"
-        );
-        #endregion
-
         #region Command Bindings
         public static RoutedUICommand OpenImageCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteImageCommand = new RoutedUICommand();
@@ -42,8 +29,9 @@ namespace AntennaReader
         public static RoutedUICommand SaveDBCommand = new RoutedUICommand();
         public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
 
-        public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
+        public static RoutedUICommand InterpolatePointsCommand = new RoutedUICommand();
+        public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
 
         public static RoutedUICommand UndoCommand = new RoutedUICommand();
@@ -62,31 +50,17 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(SaveDBCommand, SaveDB_Click));
             CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
 
-
-            CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
+            CommandBindings.Add(new CommandBinding(InterpolatePointsCommand, InterpolatePoints_Click));
+            CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
 
             CommandBindings.Add(new CommandBinding(UndoCommand, Undo_Click));
             CommandBindings.Add(new CommandBinding(RedoCommand, Redo_Click));
-
-            // create the base directory if it doesn't exist
-            try
-            {
-                string baseDir = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "AntennaReader"
-                );
-                Directory.CreateDirectory(baseDir);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to create data directory: {ex.Message}", "Error");
-            }
         }
         #endregion
 
-        #region Button Click -> Open Image
+        #region Click -> Open Image
         /// <summary>
         /// handles when "Open Image" is clicked
         /// </summary>
@@ -130,81 +104,71 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Save to Database
-        /// <summery>
-        /// Saves the current diagram and its measurements to the sqlite database
-        /// </summery>
-        private void SaveDB_Click(object sender, RoutedEventArgs e)
-        {
-            // check if diagram has 36 measurements
-            if (drawingCanvas.measurements.Count != 36)
-            {                 
-                MessageBox.Show($"Please ensure that all the points have been measured. (missing : {36 - drawingCanvas.measurements.Count})", "Error");
-                return;
-            }
-
-            string antennaID = Microsoft.VisualBasic.Interaction.InputBox("Enter Antenna ID / Station Name: (e.g. antennaID_station):", "Antenna ID / Station");
-
-            if (string.IsNullOrWhiteSpace(antennaID))
-            {
-                return;
-            }
-
-            string state = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter State (e.g. NRW):", "State");
-            string city = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter City (e.g. Dortmond):", "City");
-
-            Dictionary<int, (double, Point)> measurments = drawingCanvas.measurements;
-
-            try
-            {
-                using (var db = new AppDbContext())
-                {
-                    var diagram = new AntennaDiagram
-                    {
-                        StationName = antennaID,
-                        State = state ?? string.Empty,
-                        City = city ?? string.Empty,
-                        CreateDate = DateTime.Now,
-                        Measurements = new List<AntennaMeasurement>()
-                    };
-                    
-                    foreach (var kvp in measurments)
-                    {
-                        int angle = kvp.Key;
-                        double dbValue = kvp.Value.Item1;
-                        Point p = kvp.Value.Item2;
-
-                        var m = new AntennaMeasurement
-                        {
-                            Angle = angle,
-                            DbValue = dbValue,
-                            PosX = p.X,
-                            PosY = p.Y
-                        };
-
-                        diagram.Measurements.Add(m);
-                    }
-
-                    db.AntennaDiagrams.Add(diagram);
-                    db.SaveChanges();
-                }
-                MessageBox.Show($"Antenna {antennaID} saved to the database", "Success");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error saving to database: {ex.Message}", "Error");
-            }
-        }
-        #endregion
-
         #region Click -> Open Database
         /// <summary>
-        /// Opens the Database Browser window
+        /// Handles when Open Database Browser is clicked
         ///</summary>>
         private void OpenDB_Click(object sender, RoutedEventArgs e)
         {
-            var browser = new DatabaseBrowser { Owner = this  };
-            browser.Show();
+            DatabaseBrowser browser = new DatabaseBrowser(); // initialize db browser window
+            browser.Owner = this; // owner is main window
+            browser.Show(); // show
+        }
+        #endregion
+
+        #region Click -> Save to Database
+        /// <summery>
+        /// Saves the current diagram and its measurements to the SQLite database
+        /// </summery>
+        private void SaveDB_Click(object sender, RoutedEventArgs e)
+        {
+            // check if diagram has  all 36 measurements
+            if (drawingCanvas.measurements.Count != 36)
+            {                 
+                MessageBox.Show($"Please ensure that all the points have been measured. (missing : {36 - drawingCanvas.measurements.Count})");
+                return;
+            }
+
+            // get Antenna Name
+            string antennaName = Microsoft.VisualBasic.Interaction.InputBox("Enter Antenna Name: (antennaCode_stationName):", "Antenna Code + Station Name");
+            // check if antenna Name is valid
+            if (string.IsNullOrWhiteSpace(antennaName))
+            {
+                return;
+            }
+            // get state and city (optional)
+            string state = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter State (e.g. NRW):", "State");
+            string city = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter City (e.g. Dortmond):", "City");
+
+            try
+            {
+                using (AppDbContext db = new AppDbContext())
+                {
+                    AntennaDiagram diagram = new AntennaDiagram(); // new diagram object
+                    diagram.AntennaName = antennaName;             // store antenna name
+                    diagram.State = state ?? string.Empty;         // state
+                    diagram.City = city ?? string.Empty;           // city
+                    diagram.CreateDate = DateTime.Now;
+                    // store measurements from current drawing canvas
+                    diagram.Measurements = new List<AntennaMeasurement>();
+                    foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
+                    {
+                        AntennaMeasurement m = new AntennaMeasurement(); // new measurement object
+                        m.Angle = kvp.Key;
+                        m.DbValue = kvp.Value.Item1;
+                        m.PosX = kvp.Value.Item2.X;
+                        m.PosY = kvp.Value.Item2.Y;
+                        diagram.Measurements.Add(m);
+                    }
+                    db.AntennaDiagrams.Add(diagram); // add diagram to database
+                    db.SaveChanges();
+                }
+                MessageBox.Show($"Antenna {antennaName} has been saved to the database.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving to database: {ex.Message}");
+            }
         }
         #endregion
 

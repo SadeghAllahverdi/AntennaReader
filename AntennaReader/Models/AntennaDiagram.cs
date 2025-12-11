@@ -13,8 +13,8 @@ namespace AntennaReader.Models
     {
         public int Id { get; set; } // primary key
 
-        // 1. station name
-        public string StationName { get; set; } = string.Empty;
+        // 1. Antenna name -> antannaCode_stationName
+        public string AntennaName { get; set; } = string.Empty;
         // 2. State 
         public string State { get; set; } = string.Empty;
 

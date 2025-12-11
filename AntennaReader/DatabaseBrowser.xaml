@@ -18,7 +18,7 @@
                     <GridViewColumn Header="ID" Width="50"
                                     DisplayMemberBinding="{Binding Id}" />
 
-                    <GridViewColumn Header="Station" Width="150"
+                    <GridViewColumn Header="Antenna Name" Width="150"
                                     DisplayMemberBinding="{Binding StationName}" />
 
                     <GridViewColumn Header="State" Width="100"
@@ -38,10 +38,9 @@
             </ListView.View>
         </ListView>
 
-        <!-- Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Export CSV" Width="120" Margin="5" Click="ExportCsv_Click"/>
-            <Button Content="Export PAT" Width="120" Margin="5" Click="ExportPat_Click"/>
+            <Button Content="Export CSV" Width="120" Margin="5" Click="ExportCSV_Click"/>
+            <Button Content="Export PAT" Width="120" Margin="5" Click="ExportPAT_Click"/>
         </StackPanel>
 
     </Grid>
