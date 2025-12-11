@@ -11,12 +11,13 @@
     <Window.InputBindings>
         <KeyBinding Key="O" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenImageCommand}"/>
         <KeyBinding Key="D" Modifiers="Ctrl" Command="{x:Static local:MainWindow.DeleteImageCommand}"/>
-        
-        <KeyBinding Key="S" Modifiers="Ctrl" Command="{x:Static local:MainWindow.SaveCSVCommand}"/>
-        <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SavePATCommand}"/>
-        
-        <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
+
+        <KeyBinding Key="O" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.OpenDBCommand}"/>
+        <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SaveDBCommand}"/>
+
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
+        <KeyBinding Key="I" Modifiers="Ctrl" Command="{x:Static local:MainWindow.InterpolatePointsCommand}"/>
+        <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
 
         <KeyBinding Key="Z" Modifiers="Ctrl" Command="{x:Static local:MainWindow.UndoCommand}"/>
@@ -30,22 +31,22 @@
 
         <Menu Grid.Row="0" Panel.ZIndex="1">
             <MenuItem Header="File">
-                <MenuItem Header="Open Image" Click="OpenImage_Click"/>
-                <MenuItem Header="Delete Image" Click="DeleteImage_Click"/>
+                <MenuItem Header="Open Image (Ctrl + O)" Click="OpenImage_Click"/>
+                <MenuItem Header="Delete Image (Ctrl + D)" Click="DeleteImage_Click"/>
             </MenuItem>
-            <MenuItem Header="Save">
-                <MenuItem Header="Save in CSV DB" Click="SaveCSV_Click"/>
-                <MenuItem Header="Save in PAT DIR" Click="SavePAT_Click"/>
+            <MenuItem Header="Database">
+                <MenuItem Header="Open Database Browser (Ctrl + Shift + O)" Click="OpenDB_Click"/>
+                <MenuItem Header="Save to Database (Ctrl + Shift + S)" Click="SaveDB_Click"/>
             </MenuItem>
             <MenuItem Header="Diagram">
-                <MenuItem Header="Delete" Click="DeleteDiagram_Click"/>
-                <MenuItem Header="Lock" Click="LockDiagram_Click"/>
-                <MenuItem Header="Delete All Points" Click="DeletePoints_Click"/>
-                <MenuItem Header="Interpolate Points" Click="InterpolatePoints_Click"/>
+                <MenuItem Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
+                <MenuItem Header="Interpolate Points (Ctrl + I)" Click="InterpolatePoints_Click"/>
+                <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
+                <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
             </MenuItem>
             <MenuItem Header="Actions">
-                <MenuItem Header="Undo" Click="Undo_Click"/>
-                <MenuItem Header="Redo" Click="Redo_Click"/>
+                <MenuItem Header="Undo (Ctrl + Z)" Click="Undo_Click"/>
+                <MenuItem Header="Redo (Ctrl + Y)" Click="Redo_Click"/>
             </MenuItem>
         </Menu>
 

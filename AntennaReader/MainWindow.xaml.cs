@@ -1,4 +1,6 @@
-﻿using AntennaReader;
+﻿using AntennaReader.Infrastructure;
+using AntennaReader.Models;
+using AntennaReader;
 using Microsoft.Win32;
 using System.IO;
 using System.Text;
@@ -20,28 +22,16 @@ namespace AntennaReader
     /// </summary>
     public partial class MainWindow : Window
     {
-        #region Attributes
-        private string _csvFile => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "AntennaReader",
-            "AntennaMeasurements.csv"
-        );
-        private string _patDir => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "AntennaReader",
-            "pat_files"
-        );
-        #endregion
-
         #region Command Bindings
         public static RoutedUICommand OpenImageCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteImageCommand = new RoutedUICommand();
         
-        public static RoutedUICommand SaveCSVCommand = new RoutedUICommand();
-        public static RoutedUICommand SavePATCommand = new RoutedUICommand();
+        public static RoutedUICommand SaveDBCommand = new RoutedUICommand();
+        public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
 
-        public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
+        public static RoutedUICommand InterpolatePointsCommand = new RoutedUICommand();
+        public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
 
         public static RoutedUICommand UndoCommand = new RoutedUICommand();
@@ -56,34 +46,21 @@ namespace AntennaReader
             // connect command bindings to handler functions
             CommandBindings.Add(new CommandBinding(OpenImageCommand, OpenImage_Click));
             CommandBindings.Add(new CommandBinding(DeleteImageCommand, DeleteImage_Click));
-            
-            CommandBindings.Add(new CommandBinding(SaveCSVCommand, SaveCSV_Click));
-            CommandBindings.Add(new CommandBinding(SavePATCommand, SavePAT_Click));
-            
-            CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
+
+            CommandBindings.Add(new CommandBinding(SaveDBCommand, SaveDB_Click));
+            CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
+
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
+            CommandBindings.Add(new CommandBinding(InterpolatePointsCommand, InterpolatePoints_Click));
+            CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
 
             CommandBindings.Add(new CommandBinding(UndoCommand, Undo_Click));
             CommandBindings.Add(new CommandBinding(RedoCommand, Redo_Click));
-
-            // create the base directory if it doesn't exist
-            try
-            {
-                string baseDir = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "AntennaReader"
-                );
-                Directory.CreateDirectory(baseDir);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to create data directory: {ex.Message}", "Error");
-            }
         }
         #endregion
 
-        #region Button Click -> Open Image
+        #region Click -> Open Image
         /// <summary>
         /// handles when "Open Image" is clicked
         /// </summary>
@@ -127,119 +104,70 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Save Measurements
+        #region Click -> Open Database
         /// <summary>
-        /// handles when "Save in CSV DB" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void SaveCSV_Click(object sender, RoutedEventArgs e)
-        { 
-            // if not all points are measured
-            if (drawingCanvas.measurements.Count != 36)
-            {
-                MessageBox.Show($"Please ensure that all the points have been measured. (Missing: {36 - drawingCanvas.measurements.Count})");
-                return;
-            }
-            // get antenna ID from user
-            string antennaID = Microsoft.VisualBasic.Interaction.InputBox(
-                "Please Enter Antenna ID and station name: (antennaid_station)",
-                "Antenna ID + Station"
-            );
-            // if user entered empty ID or cancelled
-            if (string.IsNullOrEmpty(antennaID))
-            {
-                return;
-            }
-            
-            Dictionary<int, (double, Point)> measurements = drawingCanvas.measurements; // store current measurements
-            List<string> row = new List<string> { antennaID }; // first column value -> antenna ID
-            for (int angle = 0; angle < 360; angle += 10) // add dB values for each angle
-            {
-                double dbValue = measurements[angle].Item1;
-                row.Add(Math.Round(dbValue, 1).ToString());
-            }
-
-            bool needsHeader = !File.Exists(this._csvFile) || new FileInfo(this._csvFile).Length == 0;
-            using (StreamWriter writer = new StreamWriter(this._csvFile, append: true)) // make file
-            {
-                if (needsHeader)
-                {
-                    List<string> header = new List<string> { "AntennaID" }; // antenna ID column
-                    for (int angle = 0; angle < 360; angle += 10) // one column per angle
-                    {
-                        header.Add($"{angle}");
-                    }
-                    writer.WriteLine(string.Join(",", header));
-                }
-                // write row data
-                writer.WriteLine(string.Join(",", row));
-            }
-            // show success
-            MessageBox.Show($"Antenna {antennaID} saved to {this._csvFile}!");
+        /// Handles when Open Database Browser is clicked
+        ///</summary>>
+        private void OpenDB_Click(object sender, RoutedEventArgs e)
+        {
+            DatabaseBrowser browser = new DatabaseBrowser(); // initialize db browser window
+            browser.Owner = this; // owner is main window
+            browser.Show(); // show
         }
         #endregion
 
-        #region Click -> Save PAT Files
-        /// <summary>
-        /// handles when "Save in PAT DIR" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void SavePAT_Click(object sender, RoutedEventArgs e)
+        #region Click -> Save to Database
+        /// <summery>
+        /// Saves the current diagram and its measurements to the SQLite database
+        /// </summery>
+        private void SaveDB_Click(object sender, RoutedEventArgs e)
         {
-            // check if csv exists
-            if (!File.Exists(this._csvFile))
-            {
-                MessageBox.Show("No CSV file found. Please save measurements first!");
+            // check if diagram has  all 36 measurements
+            if (drawingCanvas.measurements.Count != 36)
+            {                 
+                MessageBox.Show($"Please ensure that all the points have been measured. (missing : {36 - drawingCanvas.measurements.Count})");
                 return;
             }
-            // create pat_files directory if it doesn't exist
-            if (!Directory.Exists(this._patDir))
+
+            // get Antenna Name
+            string antennaName = Microsoft.VisualBasic.Interaction.InputBox("Enter Antenna Name: (antennaCode_stationName):", "Antenna Code + Station Name");
+            // check if antenna Name is valid
+            if (string.IsNullOrWhiteSpace(antennaName))
             {
-                Directory.CreateDirectory(this._patDir);
+                return;
             }
+            // get state and city (optional)
+            string state = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter State (e.g. NRW):", "State");
+            string city = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter City (e.g. Dortmond):", "City");
+
             try
             {
-                // Read all lines from CSV
-                string[] lines = File.ReadAllLines(this._csvFile);
-                // check if file is empty
-                if (lines.Length <= 1) // only header 
+                using (AppDbContext db = new AppDbContext())
                 {
-                    MessageBox.Show("CSV file is empty!");
-                    return;
-                }
-     
-                int fileCount = 0;
-                // process each line (skip header)
-                for (int i = 1; i < lines.Length; i++)
-                {
-                    // prepare data
-                    string[] values = lines[i].Split(',');
-                    string antennaID = values[0];
-                    // create .PAT file
-                    string patFilePath = System.IO.Path.Combine(this._patDir, $"{antennaID}.PAT");
-                    using (StreamWriter writer = new StreamWriter(patFilePath))
+                    AntennaDiagram diagram = new AntennaDiagram(); // new diagram object
+                    diagram.AntennaName = antennaName;             // store antenna name
+                    diagram.State = state ?? string.Empty;         // state
+                    diagram.City = city ?? string.Empty;           // city
+                    diagram.CreateDate = DateTime.Now;
+                    // store measurements from current drawing canvas
+                    diagram.Measurements = new List<AntennaMeasurement>();
+                    foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
                     {
-                        writer.WriteLine("'', 0, 2"); // fixed header line
-                        for (int j = 1; j < values.Length; j++) // insert values
-                        {
-                            int angle = (j - 1) * 10;
-                            string dbValue = values[j];
-                            writer.WriteLine($" {angle}, {dbValue}");
-                        }
-                        writer.WriteLine("999"); // fixed footer line
+                        AntennaMeasurement m = new AntennaMeasurement(); // new measurement object
+                        m.Angle = kvp.Key;
+                        m.DbValue = kvp.Value.Item1;
+                        m.PosX = kvp.Value.Item2.X;
+                        m.PosY = kvp.Value.Item2.Y;
+                        diagram.Measurements.Add(m);
                     }
-
-                    fileCount++; // increment file number
+                    db.AntennaDiagrams.Add(diagram); // add diagram to database
+                    db.SaveChanges();
                 }
-                // show success
-                MessageBox.Show($"{fileCount} PAT files created in {this._patDir}!", "Success");
+                MessageBox.Show($"Antenna {antennaName} has been saved to the database.");
             }
             catch (Exception ex)
             {
-                // show error
-                MessageBox.Show($"Failed to create PAT files: {ex.Message}", "Error");
+                MessageBox.Show($"Error saving to database: {ex.Message}");
             }
         }
         #endregion
