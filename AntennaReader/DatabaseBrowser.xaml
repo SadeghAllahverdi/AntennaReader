@@ -19,7 +19,7 @@
                                     DisplayMemberBinding="{Binding Id}" />
 
                     <GridViewColumn Header="Antenna Name" Width="150"
-                                    DisplayMemberBinding="{Binding StationName}" />
+                                    DisplayMemberBinding="{Binding AntennaName}" />
 
                     <GridViewColumn Header="State" Width="100"
                                     DisplayMemberBinding="{Binding State}" />
