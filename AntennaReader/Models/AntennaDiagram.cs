@@ -12,14 +12,16 @@ namespace AntennaReader.Models
     public class AntennaDiagram
     {
         public int Id { get; set; } // primary key
-        public int AntennaImageId { get; set; } // foreign key
-        public AntennaImage? Image { get; set; }
 
-        // properties
         // 1. station name
         public string StationName { get; set; } = string.Empty;
+        // 2. State 
+        public string State { get; set; } = string.Empty;
+
+        // 3. City
+        public string City { get; set; } = string.Empty;
         // 2. creation at
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreateDate { get; set; }
         // 3. list of measurements
         public List<AntennaMeasurement> Measurements { get; set; } = new List<AntennaMeasurement>();
 

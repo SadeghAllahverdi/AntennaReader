@@ -16,7 +16,7 @@ namespace AntennaReader.Models
        
         public int Id { get; set; }  // primary key
         public int AntennaDiagramId { get; set; } // foreign key
-        public AntennaDiagram? Diagram { get; set; }
+        public AntennaDiagram Diagram { get; set; } = null!;
 
         //properties
         // 1. angle

@@ -1,4 +1,6 @@
-﻿using AntennaReader;
+﻿using AntennaReader.Infrastructure;
+using AntennaReader.Models;
+using AntennaReader;
 using Microsoft.Win32;
 using System.IO;
 using System.Text;
@@ -36,9 +38,9 @@ namespace AntennaReader
         #region Command Bindings
         public static RoutedUICommand OpenImageCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteImageCommand = new RoutedUICommand();
-
-        public static RoutedUICommand SaveCSVCommand = new RoutedUICommand();
-        public static RoutedUICommand SavePATCommand = new RoutedUICommand();
+        
+        public static RoutedUICommand SaveDBCommand = new RoutedUICommand();
+        public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
 
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
@@ -57,8 +59,9 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(OpenImageCommand, OpenImage_Click));
             CommandBindings.Add(new CommandBinding(DeleteImageCommand, DeleteImage_Click));
 
-            CommandBindings.Add(new CommandBinding(SaveCSVCommand, SaveCSV_Click));
-            CommandBindings.Add(new CommandBinding(SavePATCommand, SavePAT_Click));
+            CommandBindings.Add(new CommandBinding(SaveDBCommand, SaveDB_Click));
+            CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
+
 
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
@@ -127,120 +130,81 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Save Measurements
-        /// <summary>
-        /// handles when "Save in CSV DB" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void SaveCSV_Click(object sender, RoutedEventArgs e)
+        #region Click -> Save to Database
+        /// <summery>
+        /// Saves the current diagram and its measurements to the sqlite database
+        /// </summery>
+        private void SaveDB_Click(object sender, RoutedEventArgs e)
         {
-            // if not all points are measured
+            // check if diagram has 36 measurements
             if (drawingCanvas.measurements.Count != 36)
-            {
-                MessageBox.Show($"Please ensure that all the points have been measured. (Missing: {36 - drawingCanvas.measurements.Count})");
+            {                 
+                MessageBox.Show($"Please ensure that all the points have been measured. (missing : {36 - drawingCanvas.measurements.Count})", "Error");
                 return;
             }
-            // get antenna ID from user
-            string antennaID = Microsoft.VisualBasic.Interaction.InputBox(
-                "Please Enter Antenna ID and station name: (antennaid_station)",
-                "Antenna ID + Station"
-            );
-            // if user entered empty ID or cancelled
-            if (string.IsNullOrEmpty(antennaID))
+
+            string antennaID = Microsoft.VisualBasic.Interaction.InputBox("Enter Antenna ID / Station Name: (e.g. antennaID_station):", "Antenna ID / Station");
+
+            if (string.IsNullOrWhiteSpace(antennaID))
             {
                 return;
             }
 
-            Dictionary<int, (double, Point)> measurements = drawingCanvas.measurements; // store current measurements
-            List<string> row = new List<string> { antennaID }; // first column value -> antenna ID
-            for (int angle = 0; angle < 360; angle += 10) // add dB values for each angle
-            {
-                double dbValue = measurements[angle].Item1;
-                row.Add(Math.Round(dbValue, 1).ToString());
-            }
+            string state = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter State (e.g. NRW):", "State");
+            string city = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter City (e.g. Dortmond):", "City");
 
-            bool needsHeader = !File.Exists(this._csvFile) || new FileInfo(this._csvFile).Length == 0;
-            using (StreamWriter writer = new StreamWriter(this._csvFile, append: true)) // make file
-            {
-                if (needsHeader)
-                {
-                    List<string> header = new List<string> { "AntennaID" }; // antenna ID column
-                    for (int angle = 0; angle < 360; angle += 10) // one column per angle
-                    {
-                        header.Add($"{angle}");
-                    }
-                    writer.WriteLine(string.Join(",", header));
-                }
-                // write row data
-                writer.WriteLine(string.Join(",", row));
-            }
-            // show success
-            MessageBox.Show($"Antenna {antennaID} saved to {this._csvFile}!");
-        }
-        #endregion
+            Dictionary<int, (double, Point)> measurments = drawingCanvas.measurements;
 
-        #region Click -> Save PAT Files
-        /// <summary>
-        /// handles when "Save in PAT DIR" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void SavePAT_Click(object sender, RoutedEventArgs e)
-        {
-            // check if csv exists
-            if (!File.Exists(this._csvFile))
-            {
-                MessageBox.Show("No CSV file found. Please save measurements first!");
-                return;
-            }
-            // create pat_files directory if it doesn't exist
-            if (!Directory.Exists(this._patDir))
-            {
-                Directory.CreateDirectory(this._patDir);
-            }
             try
             {
-                // Read all lines from CSV
-                string[] lines = File.ReadAllLines(this._csvFile);
-                // check if file is empty
-                if (lines.Length <= 1) // only header 
+                using (var db = new AppDbContext())
                 {
-                    MessageBox.Show("CSV file is empty!");
-                    return;
-                }
-
-                int fileCount = 0;
-                // process each line (skip header)
-                for (int i = 1; i < lines.Length; i++)
-                {
-                    // prepare data
-                    string[] values = lines[i].Split(',');
-                    string antennaID = values[0];
-                    // create .PAT file
-                    string patFilePath = System.IO.Path.Combine(this._patDir, $"{antennaID}.PAT");
-                    using (StreamWriter writer = new StreamWriter(patFilePath))
+                    var diagram = new AntennaDiagram
                     {
-                        writer.WriteLine("'', 0, 2"); // fixed header line
-                        for (int j = 1; j < values.Length; j++) // insert values
+                        StationName = antennaID,
+                        State = state ?? string.Empty,
+                        City = city ?? string.Empty,
+                        CreateDate = DateTime.Now,
+                        Measurements = new List<AntennaMeasurement>()
+                    };
+                    
+                    foreach (var kvp in measurments)
+                    {
+                        int angle = kvp.Key;
+                        double dbValue = kvp.Value.Item1;
+                        Point p = kvp.Value.Item2;
+
+                        var m = new AntennaMeasurement
                         {
-                            int angle = (j - 1) * 10;
-                            string dbValue = values[j];
-                            writer.WriteLine($" {angle}, {dbValue}");
-                        }
-                        writer.WriteLine("999"); // fixed footer line
+                            Angle = angle,
+                            DbValue = dbValue,
+                            PosX = p.X,
+                            PosY = p.Y
+                        };
+
+                        diagram.Measurements.Add(m);
                     }
 
-                    fileCount++; // increment file number
+                    db.AntennaDiagrams.Add(diagram);
+                    db.SaveChanges();
                 }
-                // show success
-                MessageBox.Show($"{fileCount} PAT files created in {this._patDir}!", "Success");
+                MessageBox.Show($"Antenna {antennaID} saved to the database", "Success");
             }
             catch (Exception ex)
             {
-                // show error
-                MessageBox.Show($"Failed to create PAT files: {ex.Message}", "Error");
+                MessageBox.Show($"Error saving to database: {ex.Message}", "Error");
             }
+        }
+        #endregion
+
+        #region Click -> Open Database
+        /// <summary>
+        /// Opens the Database Browser window
+        ///</summary>>
+        private void OpenDB_Click(object sender, RoutedEventArgs e)
+        {
+            var browser = new DatabaseBrowser { Owner = this  };
+            browser.Show();
         }
         #endregion
 

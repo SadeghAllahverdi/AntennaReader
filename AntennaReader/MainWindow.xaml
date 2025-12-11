@@ -12,8 +12,8 @@
         <KeyBinding Key="O" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenImageCommand}"/>
         <KeyBinding Key="D" Modifiers="Ctrl" Command="{x:Static local:MainWindow.DeleteImageCommand}"/>
 
-        <KeyBinding Key="S" Modifiers="Ctrl" Command="{x:Static local:MainWindow.SaveCSVCommand}"/>
-        <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SavePATCommand}"/>
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{x:Static local:MainWindow.SaveDBCommand}"/>
+        <KeyBinding Key="V" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenDBCommand}"/>
 
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
@@ -33,9 +33,9 @@
                 <MenuItem Header="Open Image" Click="OpenImage_Click"/>
                 <MenuItem Header="Delete Image" Click="DeleteImage_Click"/>
             </MenuItem>
-            <MenuItem Header="Save">
-                <MenuItem Header="Save in CSV DB" Click="SaveCSV_Click"/>
-                <MenuItem Header="Save in PAT DIR" Click="SavePAT_Click"/>
+            <MenuItem Header="Database">
+                <MenuItem Header="Save to Database" Click="SaveDB_Click"/>
+                <MenuItem Header="Open Database Browser" Click="OpenDB_Click"/>
             </MenuItem>
             <MenuItem Header="Diagram">
                 <MenuItem Header="Delete" Click="DeleteDiagram_Click"/>
