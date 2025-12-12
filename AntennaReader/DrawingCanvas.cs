@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using AntennaReader.Models;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -43,6 +44,7 @@ namespace AntennaReader
 
         public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
         public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
+        private const int maxUndoRedoSteps = 30; // maximum undo-redo steps
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store points
         #endregion
 
@@ -106,12 +108,6 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void DrawingCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-
-            if (this._isDrawing || this._isMoving || this._isResizing)
-            {
-                this._SaveSate(); // save state
-            }
-
             this._isDrawing = false;    // reset draw state
             this._isMoving = false;     // reset move state
             this._isResizing = false;   // reset resize state
@@ -137,7 +133,7 @@ namespace AntennaReader
                 (int closestAngle, double dbValue, Point point)? result = this.MeasurePoint(pos);
                 if (result != null) // if measurement is valid -> store it and update visuals
                 {
-                    this._SaveSate(); // save state
+                    this._SaveState(); // save state
 
                     int angle = result.Value.closestAngle;
                     double dbValue = result.Value.dbValue;
@@ -151,26 +147,35 @@ namespace AntennaReader
             string rd = this._GetResizeDirection(pos);
             if (rd != "")
             {
+                this._SaveState(); // save state
+
                 this._isDrawing = false;
                 this._isMoving = false;
                 this._isResizing = true;
                 this._resizeDirection = rd;
+                return;
             }
             // 2. if position of the event is inside the ellipse -> set state: move
             if (this._IsInsideEllipse(pos))
             {
+                this._SaveState(); // save state
+
                 this._isDrawing = false;
                 this._isResizing = false;
                 this._isMoving = true;
                 this._moveStartPoint = pos; // set move start point
+                return;
             }
             // 3. if there is no start point -> set state: draw and set start point to the event position
             else if (this._startPoint == null)
             {
+                this._SaveState(); // save state
+
                 this._isMoving = false;
                 this._isResizing = false;
                 this._isDrawing = true;
                 this._startPoint = pos; // set start point of diagram
+                return;
             }
         }
         #endregion
@@ -371,11 +376,32 @@ namespace AntennaReader
         }
         #endregion
 
+        #region Helper Function (Trim State Stack)
+        /// <summary>
+        /// keeps the undo and redo stack withing a certain limit
+        /// </summary>
+        private void TrimStateStack(Stack<DiagramState> stateStack)
+        {
+            // check if stack exeeds maximum limit
+            if (stateStack.Count <= maxUndoRedoSteps)
+            {
+                return;
+            }
+
+            DiagramState[] statesArray = stateStack.ToArray(); // convert stack to array -> so i can trim and reverse it ...
+            stateStack.Clear(); // clear stack
+            foreach (DiagramState state in statesArray.Take(maxUndoRedoSteps).Reverse())
+            {
+                stateStack.Push(state); // rebuild stack
+            }
+        }
+        #endregion
+
         #region Helper Function (Save Diagram State)
         /// <summary>
         /// saves the current states of the diagram
         /// </summary>
-        private void _SaveSate()
+        private void _SaveState()
         {
             // check if we are performing undo-redo -> do not save state
             if (this._isPerformingUndoRedo)
@@ -392,6 +418,7 @@ namespace AntennaReader
 
             this.UndoStack.Push(currentState); // push current state to undo stack
             this.RedoStack.Clear(); // clear redo stack
+            this.TrimStateStack(this.UndoStack); // trim undo stack just in case
         }
         #endregion
 
@@ -416,6 +443,7 @@ namespace AntennaReader
                this._isLocked
             );
             this.RedoStack.Push(currentState);
+            this.TrimStateStack(this.RedoStack); 
             // pop undo stack -> previous state
             DiagramState prevState = this.UndoStack.Pop();
             // reset attributes to previous state
@@ -449,8 +477,8 @@ namespace AntennaReader
                this.measurements,
                this._isLocked
             );
-            // pop undo stack -> previous state
             this.UndoStack.Push(currentState);
+            this.TrimStateStack(this.UndoStack);
             DiagramState nextState = this.RedoStack.Pop();
             // reset attributes to previous state
             this._startPoint = nextState.StartPoint;
@@ -626,7 +654,6 @@ namespace AntennaReader
             {
                 return;
             }
-            this._SaveSate();
             // calculate distance in x and y
             double dx = pos.X - this._moveStartPoint.Value.X;
             double dy = pos.Y - this._moveStartPoint.Value.Y;
@@ -692,7 +719,7 @@ namespace AntennaReader
         /// </summary>
         public void DeleteDiagram()
         {
-            this._SaveSate(); // save state
+            this._SaveState(); // save state
             // reset all attributes of diagram
             this._isLocked = false;
             this._isDrawing = false;
@@ -729,7 +756,7 @@ namespace AntennaReader
         /// </summary>
         public void DeleteMeasurements()
         {
-            this._SaveSate(); // save state
+            this._SaveState(); // save state
             // reset measurements
             this.measurements.Clear();
             // update visuals
@@ -851,6 +878,7 @@ namespace AntennaReader
             {
                 return;
             }
+            this._SaveState(); 
             // calculate center point
             Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
             Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
@@ -928,6 +956,31 @@ namespace AntennaReader
             }
             this.measurements = result;
             this.InvalidateVisual();
+        }
+        #endregion
+
+        #region Helper Function (Set Meaurments From Database)
+        /// <summary>
+        /// sets measurements based on a dictionary of angle and db values
+        /// </summary>
+        public bool SetMeasurements(Dictionary<int, double> angleDB)
+        {
+            // check if diagram is defined or there is available data
+            if(this._startPoint == null || this._endPoint == null || angleDB == null)
+            {
+                return false;
+            }
+            this._SaveState(); // save state
+            Dictionary<int, (double, Point)> newMeasurements = new Dictionary<int, (double, Point)>();
+            foreach (KeyValuePair<int, double> kvp in angleDB)
+            {
+                double dbValue = kvp.Value;
+                newMeasurements[kvp.Key] = (dbValue, new Point(0, 0)); // initialze all positions with (0,0)
+            }
+            this.measurements = newMeasurements;
+            this._UpdateMeasurements(); // update positions
+            this.InvalidateVisual();
+            return true;
         }
         #endregion
     }

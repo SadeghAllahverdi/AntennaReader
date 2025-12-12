@@ -3,6 +3,7 @@ using AntennaReader.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,8 @@ namespace AntennaReader
     /// </summary>
     public partial class DatabaseBrowser : Window
     {
+        // attributes
+        private ICollectionView? _diagramView;
         #region Constructor
         /// <summary>
         /// Initializes DatabaseBrowser window. Loads antenna diagrams from the SQLite database.
@@ -44,6 +47,8 @@ namespace AntennaReader
             {
                 List<AntennaDiagram> diagrams = db.AntennaDiagrams.OrderBy(d => d.Id).ToList(); // list all diagrams
                 DiagramList.ItemsSource = diagrams;
+                _diagramView = CollectionViewSource.GetDefaultView(diagrams);
+                _diagramView.Filter = this.DiagramFilter;
             }
         }
         #endregion
@@ -55,6 +60,90 @@ namespace AntennaReader
         private List<AntennaDiagram> GetSelectedDiagrams()
         {
             return DiagramList.SelectedItems.Cast<AntennaDiagram>().ToList();
+        }
+        #endregion
+
+        #region Helper Function (Diagram Filter)
+        /// <summary>
+        /// Filter function for antenna diagrams based on search text box input
+        /// </summary>
+        private bool DiagramFilter(object row)
+        {   
+            AntennaDiagram? diagram = row as AntennaDiagram;
+            if (diagram == null) return false; // row did not cast correctly
+
+            string searchText = SearchBar.Text;
+            if (string.IsNullOrEmpty(searchText)) return true; // no filter 
+
+            bool nameMatch = diagram.AntennaName !=null && diagram.AntennaName.ToLower().Contains(searchText.ToLower());
+            bool stateMatch = diagram.State !=null && diagram.State.ToLower().Contains(searchText.ToLower());
+            bool cityMatch = diagram.City !=null && diagram.City.ToLower().Contains(searchText.ToLower());
+
+            return nameMatch || stateMatch || cityMatch;
+        }
+        #endregion
+
+        #region Text Changed -> Search Bar
+        /// <summary>
+        /// refreshes the diagram list based on search bar input
+        /// </summary>
+        private void SearchBar_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _diagramView?.Refresh();
+        }
+        #endregion
+
+        #region Click -> Delete Antenna Diagram(s)
+        /// <summary>
+        /// deletes selected antenna diagrams from SQLite database and refreshes the diagram list
+        /// </summary>
+        private void Delete_Click(object sender, RoutedEventArgs e)
+        {
+            List<AntennaDiagram> selectedDiagrams = GetSelectedDiagrams(); // get selected diagrams
+            // check if list is empty
+            if (!selectedDiagrams.Any())
+            {
+                MessageBox.Show("Please select at least one diagram to delete");
+                return;
+            }
+
+            // warn user -> confirm deletion
+            MessageBoxResult confirm = MessageBox.Show($"Deleting {selectedDiagrams.Count} antenna diagrams from SQLite database? \nThis can not be undone!", "confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            try
+            {
+                using (AppDbContext db = new AppDbContext())
+                {
+                    foreach (AntennaDiagram diagram in selectedDiagrams)
+                    {
+                        AntennaDiagram? toDelete = db.AntennaDiagrams.Include(d => d.Measurements).FirstOrDefault(d => d.Id == diagram.Id);
+                        if (toDelete != null)
+                        {
+                            db.AntennaDiagrams.Remove(toDelete);
+                        }
+                    }
+                    db.SaveChanges();
+                }
+                LoadDiagrams(); // refresh diagram list
+                MessageBox.Show($"Deleted {selectedDiagrams.Count} diagram(s) from database.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to delete diagram(s): {ex.Message}");
+                return;
+            }
+        }
+        #endregion
+
+        #region Click -> Clear Selection
+        ///<summery>
+        /// clears selected rows
+        ///</summery>
+        private void ClearSelection_Click(object sender, RoutedEventArgs e)
+        {
+            DiagramList.SelectedItems.Clear();
+            DiagramList.SelectedItem = null;
         }
         #endregion
 
