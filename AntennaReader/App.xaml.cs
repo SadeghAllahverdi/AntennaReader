@@ -16,7 +16,7 @@ namespace AntennaReader
 
             try
             {
-                AppPaths.EnsureFolderExists();
+                AppPaths.EnsureDBExists();
                 using (var db = new AppDbContext())
                 {
                     db.Database.EnsureCreated();

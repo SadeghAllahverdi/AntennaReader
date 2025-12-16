@@ -1,25 +1,53 @@
 ﻿<Window x:Class="AntennaReader.DatabaseBrowser"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Diagram Manager" 
+        Title="Diagram Manager"
         Height="500" Width="800"
         WindowStartupLocation="CenterScreen">
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <ListView x:Name="DiagramList" Grid.Row="0" Margin="0,0,0,10">
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <TextBox x:Name="SearchBar"
+             Height="28"
+             Padding="6,0,6,0"
+             TextChanged="SearchBar_TextChanged"/>
+
+            <TextBlock Text="Search (e.g. Antenna Name / State / City )"
+               Margin="10,0,0,0"
+               VerticalAlignment="Center"
+               Foreground="Gray"
+               FontStyle="Italic"
+               IsHitTestVisible="False">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=SearchBar}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+
+        <ListView x:Name="DiagramList"
+                  Grid.Row="1"
+                  Margin="0,0,0,10"
+                  SelectionMode="Extended">
             <ListView.View>
                 <GridView>
-
                     <GridViewColumn Header="ID" Width="50"
                                     DisplayMemberBinding="{Binding Id}" />
 
                     <GridViewColumn Header="Antenna Name" Width="150"
-                                    DisplayMemberBinding="{Binding StationName}" />
+                                    DisplayMemberBinding="{Binding AntennaName}" />
 
                     <GridViewColumn Header="State" Width="100"
                                     DisplayMemberBinding="{Binding State}" />
@@ -38,9 +66,12 @@
             </ListView.View>
         </ListView>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Import to diagram" Width="120" Margin="5" Click="Import_Click"/>
             <Button Content="Export CSV" Width="120" Margin="5" Click="ExportCSV_Click"/>
             <Button Content="Export PAT" Width="120" Margin="5" Click="ExportPAT_Click"/>
+            <Button Content="Clear Selection" Width="120" Margin="5" Click="ClearSelection_Click"/>
+            <Button Content="Delete Antenna(s)" Width="120" Margin="5" Background="Red" Foreground="White" FontWeight="Bold" Click="Delete_Click"/>
         </StackPanel>
 
     </Grid>
