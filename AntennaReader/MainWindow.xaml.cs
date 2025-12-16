@@ -71,9 +71,11 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void OpenImage_Click(object sender, RoutedEventArgs e)
         {
+            Directory.CreateDirectory(AppPaths.ImageFolder); // ensure image folder exists
             // open file explorer
             OpenFileDialog openFileDialog = new OpenFileDialog();
             openFileDialog.Filter = "Image Files (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg";
+            openFileDialog.InitialDirectory = AppPaths.ImageFolder;
             // user chose a file
             if (openFileDialog.ShowDialog() == true)
             {

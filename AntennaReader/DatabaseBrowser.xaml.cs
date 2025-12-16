@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -80,6 +81,23 @@ namespace AntennaReader
             bool cityMatch = diagram.City !=null && diagram.City.ToLower().Contains(searchText.ToLower());
 
             return nameMatch || stateMatch || cityMatch;
+        }
+        #endregion
+
+        #region Helper Function (Open Export Folder)
+        /// <summary>
+        /// opens the export folder dialog
+        /// </summary>
+        private static void OpenExportFolder()
+        {
+            // Make sure the folder exists (safe even if it already exists)
+            Directory.CreateDirectory(AppPaths.ExportFolder);
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = AppPaths.ExportFolder,
+                UseShellExecute = true
+            });
         }
         #endregion
 
@@ -195,6 +213,8 @@ namespace AntennaReader
                     }
                 }
                 MessageBox.Show($"Exported {selectedDiagrams.Count} diagram(s) to CSV \n{AppPaths.ExportFolder}");
+                OpenExportFolder();
+
             }
             catch (Exception ex)
             {
@@ -241,6 +261,8 @@ namespace AntennaReader
                     }
                 }
                 MessageBox.Show($"Exported {selectedDiagrams.Count} PAT file(s) to \n{AppPaths.ExportFolder}", "Success");
+                OpenExportFolder();
+
             }
             catch (Exception ex)
             {
