@@ -5,15 +5,17 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AntennaReader"
         mc:Ignorable="d"
-        Title="PlotLeser" 
+        Title="PlotLeser"
         Height="800" Width="1000"
         WindowStartupLocation="CenterScreen">
+
     <Window.InputBindings>
         <KeyBinding Key="O" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenImageCommand}"/>
         <KeyBinding Key="D" Modifiers="Ctrl" Command="{x:Static local:MainWindow.DeleteImageCommand}"/>
 
         <KeyBinding Key="O" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.OpenDBCommand}"/>
         <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SaveDBCommand}"/>
+        <KeyBinding Key="I" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.ImportDBCommand}"/>
 
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
         <KeyBinding Key="I" Modifiers="Ctrl" Command="{x:Static local:MainWindow.InterpolatePointsCommand}"/>
@@ -23,36 +25,56 @@
         <KeyBinding Key="Z" Modifiers="Ctrl" Command="{x:Static local:MainWindow.UndoCommand}"/>
         <KeyBinding Key="Y" Modifiers="Ctrl" Command="{x:Static local:MainWindow.RedoCommand}"/>
     </Window.InputBindings>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Menu Grid.Row="0" Panel.ZIndex="1">
-            <MenuItem Header="File">
-                <MenuItem Header="Open Image (Ctrl + O)" Click="OpenImage_Click"/>
-                <MenuItem Header="Delete Image (Ctrl + D)" Click="DeleteImage_Click"/>
-            </MenuItem>
-            <MenuItem Header="Database">
-                <MenuItem Header="Open Database Browser (Ctrl + Shift + O)" Click="OpenDB_Click"/>
-                <MenuItem Header="Save to Database (Ctrl + Shift + S)" Click="SaveDB_Click"/>
-            </MenuItem>
-            <MenuItem Header="Diagram">
-                <MenuItem Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
-                <MenuItem Header="Interpolate Points (Ctrl + I)" Click="InterpolatePoints_Click"/>
-                <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
-                <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
-            </MenuItem>
-            <MenuItem Header="Actions">
-                <MenuItem Header="Undo (Ctrl + Z)" Click="Undo_Click"/>
-                <MenuItem Header="Redo (Ctrl + Y)" Click="Redo_Click"/>
-            </MenuItem>
-        </Menu>
+        <Border Grid.Row="0" Background="White" Panel.ZIndex="1">
+            <DockPanel LastChildFill="True">
+                <TextBlock x:Name="AntennaNameText"
+                   DockPanel.Dock="Right"
+                   Margin="12,0,12,0"
+                   VerticalAlignment="Center"
+                   Foreground="Black"
+                   FontWeight="Bold"
+                   Text="No antenna loaded"/>
+
+                <Menu DockPanel.Dock="Left"
+              Background="White"
+              Foreground="Black">
+                    <MenuItem Header="File">
+                        <MenuItem Header="Open Image (Ctrl + O)" Click="OpenImage_Click"/>
+                        <MenuItem Header="Delete Image (Ctrl + D)" Click="DeleteImage_Click"/>
+                    </MenuItem>
+
+                    <MenuItem Header="Database">
+                        <MenuItem Header="Open Database Browser (Ctrl + Shift + O)" Click="OpenDB_Click"/>
+                        <MenuItem Header="Save to Database (Ctrl + Shift + S)" Click="SaveDB_Click"/>
+                        <MenuItem Header="Import from Database (Ctrl + Shift + I)" Click="ImportFromDB_Click"/>
+                    </MenuItem>
+
+                    <MenuItem Header="Diagram">
+                        <MenuItem Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
+                        <MenuItem Header="Interpolate Points (Ctrl + I)" Click="InterpolatePoints_Click"/>
+                        <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
+                        <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
+                    </MenuItem>
+
+                    <MenuItem Header="Actions">
+                        <MenuItem Header="Undo (Ctrl + Z)" Click="Undo_Click"/>
+                        <MenuItem Header="Redo (Ctrl + Y)" Click="Redo_Click"/>
+                    </MenuItem>
+                </Menu>
+            </DockPanel>
+        </Border>
+
 
         <local:DrawingCanvas x:Name="drawingCanvas"
-                Grid.Row="1"
-                Background="DimGray"
-                Visibility="Visible"/>
+                             Grid.Row="1"
+                             Background="DimGray"
+                             Visibility="Visible"/>
     </Grid>
 </Window>

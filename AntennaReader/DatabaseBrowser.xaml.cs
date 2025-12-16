@@ -244,8 +244,35 @@ namespace AntennaReader
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to export PAT files: {ex.Message}", "Error");
+                MessageBox.Show($"Failed to export PAT files: {ex.Message}");
             }
+        }
+        #endregion
+
+        #region Click -> Import To Diagram
+        /// <summary>
+        /// Imports the measurements of a selected antenna diagram from the database into the main diagram window.
+        ///</summary>
+        private void Import_Click(object sender, RoutedEventArgs e)
+        {
+            // check that only one is selected
+            if (DiagramList.SelectedItems.Count != 1)
+            {
+                MessageBox.Show("Please select exactly ONE antenna diagram to import.");
+                return;
+            }
+
+            AntennaDiagram? selectedDiagram = DiagramList.SelectedItem as AntennaDiagram;
+
+            if (selectedDiagram == null)
+            {
+                MessageBox.Show("Please select a diagram to import.");
+                return;
+            }
+
+            this.Tag = selectedDiagram.Id;
+            this.DialogResult = true;
+            this.Close();
         }
         #endregion
     }

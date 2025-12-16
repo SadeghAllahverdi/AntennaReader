@@ -67,6 +67,7 @@
         </ListView>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Import to diagram" Width="120" Margin="5" Click="Import_Click"/>
             <Button Content="Export CSV" Width="120" Margin="5" Click="ExportCSV_Click"/>
             <Button Content="Export PAT" Width="120" Margin="5" Click="ExportPAT_Click"/>
             <Button Content="Clear Selection" Width="120" Margin="5" Click="ClearSelection_Click"/>

@@ -15,14 +15,19 @@ namespace AntennaReader.Infrastructure
         // attributes
         // 1. base folder path
         public static string BaseFolder => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "AntennaReader"
         );
 
         // 2. database path
         public static string DBPath => System.IO.Path.Combine(
             BaseFolder, 
-            "AntennaReader.db"
+            "antenna.db"
+        );
+        public static string SeedDBPath => System.IO.Path.Combine(
+            BaseFolder,
+            "Data",
+            "antenna.db"
         );
         // 3. image folder
         public static string ImageFolder => System.IO.Path.Combine(
@@ -53,5 +58,21 @@ namespace AntennaReader.Infrastructure
                 Directory.CreateDirectory( ExportFolder );
             }
         }
+
+        public static void EnsureDBExists ()
+        {
+            EnsureFolderExists();
+            if (File.Exists(DBPath))
+            {
+                return;
+            }
+
+            if (!File.Exists(SeedDBPath))
+            { 
+                throw new FileNotFoundException("Seed database not found.", SeedDBPath);
+            }
+
+            File.Copy(SeedDBPath, DBPath);
+        }   
     }
 }

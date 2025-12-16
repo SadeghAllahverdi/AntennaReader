@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace AntennaReader
@@ -28,6 +29,7 @@ namespace AntennaReader
         
         public static RoutedUICommand SaveDBCommand = new RoutedUICommand();
         public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
+        public static RoutedUICommand ImportDBCommand = new RoutedUICommand();
 
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand InterpolatePointsCommand = new RoutedUICommand();
@@ -49,6 +51,7 @@ namespace AntennaReader
 
             CommandBindings.Add(new CommandBinding(SaveDBCommand, SaveDB_Click));
             CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
+            CommandBindings.Add(new CommandBinding(ImportDBCommand, ImportFromDB_Click));
 
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
             CommandBindings.Add(new CommandBinding(InterpolatePointsCommand, InterpolatePoints_Click));
@@ -144,7 +147,33 @@ namespace AntennaReader
             {
                 using (AppDbContext db = new AppDbContext())
                 {
-                    AntennaDiagram diagram = new AntennaDiagram(); // new diagram object
+                    // 1. check if diagram exists
+                    AntennaDiagram? existingDiagram = db.AntennaDiagrams
+                        .Include(d => d.Measurements)
+                        .FirstOrDefault(d => d.AntennaName.ToLower() == antennaName.ToLower());
+                    if (existingDiagram != null)
+                    {
+                        existingDiagram.State = state ?? string.Empty; // update state
+                        existingDiagram.City = city ?? string.Empty;   // update city
+                        existingDiagram.CreateDate = DateTime.Now;     // update date
+                        db.AntennaMeasurements.RemoveRange(existingDiagram.Measurements);
+                        existingDiagram.Measurements.Clear();
+                        foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
+                        {
+                            AntennaMeasurement m = new AntennaMeasurement(); // new measurement object
+                            m.Angle = kvp.Key;
+                            m.DbValue = kvp.Value.Item1;
+                            m.PosX = kvp.Value.Item2.X;
+                            m.PosY = kvp.Value.Item2.Y;
+                            existingDiagram.Measurements.Add(m);
+                        }
+                        db.SaveChanges();
+                        MessageBox.Show($"Antenna {antennaName} was overwritten in the database.");
+                        return;
+                    }
+
+                        // 2. save a new diagram 
+                        AntennaDiagram diagram = new AntennaDiagram(); // new diagram object
                     diagram.AntennaName = antennaName;             // store antenna name
                     diagram.State = state ?? string.Empty;         // state
                     diagram.City = city ?? string.Empty;           // city
@@ -169,6 +198,48 @@ namespace AntennaReader
             {
                 MessageBox.Show($"Error saving to database: {ex.Message}");
             }
+        }
+        #endregion
+
+        #region Click -> Import From Database
+        /// <summery>
+        /// opens the database browser to import a diagram from the database
+        /// </summery>
+        private void ImportFromDB_Click(object sender, RoutedEventArgs e)
+        {
+            DatabaseBrowser browser = new DatabaseBrowser(); // initialize db browser window
+            browser.Owner = this; 
+            // check if user selected a diagram to import
+            bool? ok = browser.ShowDialog();
+            if (ok != true)
+            {
+                return;
+            }
+
+            using (AppDbContext db = new AppDbContext())
+            {
+                AntennaDiagram diagram = db.AntennaDiagrams
+                    .Include(d => d.Measurements)
+                    .First(d => d.Id == (int)browser.Tag);
+                // dictionary to store (angle, db)
+                Dictionary<int, double> measurements = new Dictionary<int, double>();
+                foreach (AntennaMeasurement m in diagram.Measurements)
+                {
+                    measurements[m.Angle] = m.DbValue;
+                }
+
+                if (!drawingCanvas.SetMeasurements(measurements))
+                {
+                    MessageBox.Show("Error importing diagram from database. Please Make sure that you have drawn a diagram!");
+                    return;
+                }
+
+                // store antenna name
+                drawingCanvas.Tag = diagram.AntennaName;
+                AntennaNameText.Text = $"Loaded: {diagram.AntennaName}";
+            }
+
+
         }
         #endregion
 
