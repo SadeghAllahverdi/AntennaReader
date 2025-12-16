@@ -21,11 +21,11 @@ namespace AntennaReader.Infrastructure
 
         // 2. database path
         public static string DBPath => System.IO.Path.Combine(
-            BaseFolder, 
+            AppDomain.CurrentDomain.BaseDirectory, 
             "antenna.db"
         );
         public static string SeedDBPath => System.IO.Path.Combine(
-            BaseFolder,
+            AppDomain.CurrentDomain.BaseDirectory,
             "Data",
             "antenna.db"
         );
