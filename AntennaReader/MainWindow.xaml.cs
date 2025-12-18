@@ -241,6 +241,8 @@ namespace AntennaReader
         private void DeleteDiagram_Click(object sender, RoutedEventArgs e)
         {
             drawingCanvas.DeleteDiagram();
+            LockStatusText.Foreground = Brushes.Green;
+            LockStatusText.Text = "Unlocked";
         }
         #endregion
 

@@ -49,6 +49,9 @@
                     <GridViewColumn Header="Antenna Name" Width="150"
                                     DisplayMemberBinding="{Binding AntennaName}" />
 
+                    <GridViewColumn Header="Antenna Owner" Width="150"
+                                    DisplayMemberBinding="{Binding AntennaOwner}" />
+
                     <GridViewColumn Header="State" Width="100"
                                     DisplayMemberBinding="{Binding State}" />
 
