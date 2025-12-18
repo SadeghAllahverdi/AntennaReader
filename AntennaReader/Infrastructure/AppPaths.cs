@@ -21,7 +21,7 @@ namespace AntennaReader.Infrastructure
 
         // 2. database path
         public static string DBPath => System.IO.Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, 
+            BaseFolder, 
             "antenna.db"
         );
         public static string SeedDBPath => System.IO.Path.Combine(
@@ -57,22 +57,6 @@ namespace AntennaReader.Infrastructure
             {
                 Directory.CreateDirectory( ExportFolder );
             }
-        }
-
-        public static void EnsureDBExists ()
-        {
-            EnsureFolderExists();
-            if (File.Exists(DBPath))
-            {
-                return;
-            }
-
-            if (!File.Exists(SeedDBPath))
-            { 
-                throw new FileNotFoundException("Seed database not found.", SeedDBPath);
-            }
-
-            File.Copy(SeedDBPath, DBPath);
-        }   
+        }  
     }
 }

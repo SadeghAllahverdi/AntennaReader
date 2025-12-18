@@ -29,7 +29,6 @@ namespace AntennaReader
         
         public static RoutedUICommand SaveDBCommand = new RoutedUICommand();
         public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
-        public static RoutedUICommand ImportDBCommand = new RoutedUICommand();
 
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand InterpolatePointsCommand = new RoutedUICommand();
@@ -51,7 +50,6 @@ namespace AntennaReader
 
             CommandBindings.Add(new CommandBinding(SaveDBCommand, SaveDB_Click));
             CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
-            CommandBindings.Add(new CommandBinding(ImportDBCommand, ImportFromDB_Click));
 
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
             CommandBindings.Add(new CommandBinding(InterpolatePointsCommand, InterpolatePoints_Click));
@@ -60,6 +58,35 @@ namespace AntennaReader
 
             CommandBindings.Add(new CommandBinding(UndoCommand, Undo_Click));
             CommandBindings.Add(new CommandBinding(RedoCommand, Redo_Click));
+        }
+        #endregion
+
+        #region Helper Function -> Import From Database
+        /// <summary>
+        /// imports measurements from a given diagram into the drawing canvas
+        /// </summary>
+        public void ImportDiagramById (int id)
+        {
+            using (AppDbContext db = new AppDbContext())
+            {
+                AntennaDiagram? diagram = db.AntennaDiagrams
+                    .Include(d => d.Measurements)
+                    .FirstOrDefault(d => d.Id == id);
+
+                Dictionary<int, double> measurements = new();
+                foreach (AntennaMeasurement m in diagram.Measurements) 
+                {
+                    measurements[m.Angle] = m.DbValue;
+                }
+
+                if (!drawingCanvas.SetMeasurements(measurements))
+                {
+                    MessageBox.Show("Error importing measurements from database.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                AntennaNameText.Text = $"loaded: {diagram.AntennaName}";
+            }
         }
         #endregion
 
@@ -85,12 +112,11 @@ namespace AntennaReader
                 {
                     // set background image
                     drawingCanvas.SetBackgroundImage(filePath);
-                    MessageBox.Show("Image loaded!");
                 }
                 catch (Exception ex)
                 {
                     // show error
-                    MessageBox.Show($"Error loading image: {ex.Message}");
+                    MessageBox.Show($"Error loading image: {ex.Message}","Error", MessageBoxButton.OK ,MessageBoxImage.Error);
                 }
             }
         }
@@ -105,7 +131,7 @@ namespace AntennaReader
         private void DeleteImage_Click(object sender, RoutedEventArgs e)
         {
             drawingCanvas.DeleteBackgroundImage();
-            MessageBox.Show("Image deleted!");
+            MessageBox.Show("Image deleted!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         #endregion
 
@@ -130,7 +156,7 @@ namespace AntennaReader
             // check if diagram has  all 36 measurements
             if (drawingCanvas.measurements.Count != 36)
             {                 
-                MessageBox.Show($"Please ensure that all the points have been measured. (missing : {36 - drawingCanvas.measurements.Count})");
+                MessageBox.Show($"Please ensure that all the points have been measured. (missing : {36 - drawingCanvas.measurements.Count})", "Incomplete Measurement", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
             }
 
@@ -141,7 +167,8 @@ namespace AntennaReader
             {
                 return;
             }
-            // get state and city (optional)
+            // get owner, state and city (optional)
+            string owner = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter Owner (e.g. DB Netz):", "Owner");
             string state = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter State (e.g. NRW):", "State");
             string city = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter City (e.g. Dortmond):", "City");
 
@@ -155,6 +182,7 @@ namespace AntennaReader
                         .FirstOrDefault(d => d.AntennaName.ToLower() == antennaName.ToLower());
                     if (existingDiagram != null)
                     {
+                        existingDiagram.AntennaOwner = owner ?? string.Empty; // update owner
                         existingDiagram.State = state ?? string.Empty; // update state
                         existingDiagram.City = city ?? string.Empty;   // update city
                         existingDiagram.CreateDate = DateTime.Now;     // update date
@@ -170,13 +198,14 @@ namespace AntennaReader
                             existingDiagram.Measurements.Add(m);
                         }
                         db.SaveChanges();
-                        MessageBox.Show($"Antenna {antennaName} was overwritten in the database.");
+                        MessageBox.Show($"Antenna {antennaName} was overwritten in the database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                         return;
                     }
 
-                        // 2. save a new diagram 
-                        AntennaDiagram diagram = new AntennaDiagram(); // new diagram object
+                    // 2. save a new diagram 
+                    AntennaDiagram diagram = new AntennaDiagram(); // new diagram object
                     diagram.AntennaName = antennaName;             // store antenna name
+                    diagram.AntennaOwner = owner ?? string.Empty;  // owner
                     diagram.State = state ?? string.Empty;         // state
                     diagram.City = city ?? string.Empty;           // city
                     diagram.CreateDate = DateTime.Now;
@@ -194,54 +223,12 @@ namespace AntennaReader
                     db.AntennaDiagrams.Add(diagram); // add diagram to database
                     db.SaveChanges();
                 }
-                MessageBox.Show($"Antenna {antennaName} has been saved to the database.");
+                MessageBox.Show($"Antenna {antennaName} has been saved to the database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving to database: {ex.Message}");
+                MessageBox.Show($"Error saving to database: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-        #endregion
-
-        #region Click -> Import From Database
-        /// <summery>
-        /// opens the database browser to import a diagram from the database
-        /// </summery>
-        private void ImportFromDB_Click(object sender, RoutedEventArgs e)
-        {
-            DatabaseBrowser browser = new DatabaseBrowser(); // initialize db browser window
-            browser.Owner = this; 
-            // check if user selected a diagram to import
-            bool? ok = browser.ShowDialog();
-            if (ok != true)
-            {
-                return;
-            }
-
-            using (AppDbContext db = new AppDbContext())
-            {
-                AntennaDiagram diagram = db.AntennaDiagrams
-                    .Include(d => d.Measurements)
-                    .First(d => d.Id == (int)browser.Tag);
-                // dictionary to store (angle, db)
-                Dictionary<int, double> measurements = new Dictionary<int, double>();
-                foreach (AntennaMeasurement m in diagram.Measurements)
-                {
-                    measurements[m.Angle] = m.DbValue;
-                }
-
-                if (!drawingCanvas.SetMeasurements(measurements))
-                {
-                    MessageBox.Show("Error importing diagram from database. Please Make sure that you have drawn a diagram!");
-                    return;
-                }
-
-                // store antenna name
-                drawingCanvas.Tag = diagram.AntennaName;
-                AntennaNameText.Text = $"Loaded: {diagram.AntennaName}";
-            }
-
-
         }
         #endregion
 
@@ -254,7 +241,6 @@ namespace AntennaReader
         private void DeleteDiagram_Click(object sender, RoutedEventArgs e)
         {
             drawingCanvas.DeleteDiagram();
-            MessageBox.Show("Diagram deleted!", "Success");
         }
         #endregion
 
@@ -266,17 +252,19 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void LockDiagram_Click(object sender, RoutedEventArgs e)
         {
+            // check if diagram exists
+            if (!drawingCanvas.HasDiagram)
+            {
+                MessageBox.Show("Please Draw a Diagram first!", "No Diagram", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
             drawingCanvas.IsLocked = !drawingCanvas.IsLocked; // change lock state
+            drawingCanvas.Focus();
 
-            if (drawingCanvas.IsLocked)
-            {
-                drawingCanvas.Focus();
-                MessageBox.Show("Diagram locked!");
-            }
-            else
-            {
-                MessageBox.Show("Diagram unlocked!");
-            }
+            LockButton.Header = drawingCanvas.IsLocked ? "Unlock (Ctrl + L)" : "Lock (Ctrl + L)";
+
+            LockStatusText.Foreground = drawingCanvas.IsLocked ? Brushes.DarkRed : Brushes.Green;
+            LockStatusText.Text = drawingCanvas.IsLocked ? "Locked" : "Unlocked";
         }
         #endregion
 
@@ -288,8 +276,12 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void DeletePoints_Click(object sender, RoutedEventArgs e)
         {
+            if (!drawingCanvas.HasDiagram)
+            {
+                MessageBox.Show("Please Draw a Diagram first!", "No Diagram", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
             drawingCanvas.DeleteMeasurements();
-            MessageBox.Show("All points deleted!", "Success");
         }
         #endregion
 
@@ -303,11 +295,10 @@ namespace AntennaReader
         {
             if (drawingCanvas.measurements.Count == 0)
             {
-                MessageBox.Show("Please add at least one point!");
+                MessageBox.Show("Please add at least one point!", "No Point", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
             }
             drawingCanvas.InterpolateMeasurements();
-            MessageBox.Show("Missing points are interpolated!", "Success");
         }
         #endregion
 
@@ -325,7 +316,7 @@ namespace AntennaReader
             }
             else
             {
-                MessageBox.Show("Nothing to undo!");
+                MessageBox.Show("Nothing to undo!", "Empty Undo Stack", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         #endregion
@@ -344,7 +335,7 @@ namespace AntennaReader
             }
             else
             {
-                MessageBox.Show("Nothing to Redo!");
+                MessageBox.Show("Nothing to Redo!", "Empty Re Stack", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         #endregion

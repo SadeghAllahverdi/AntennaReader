@@ -15,7 +15,6 @@
 
         <KeyBinding Key="O" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.OpenDBCommand}"/>
         <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SaveDBCommand}"/>
-        <KeyBinding Key="I" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.ImportDBCommand}"/>
 
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
         <KeyBinding Key="I" Modifiers="Ctrl" Command="{x:Static local:MainWindow.InterpolatePointsCommand}"/>
@@ -42,6 +41,14 @@
                    FontWeight="Bold"
                    Text="No antenna loaded"/>
 
+                <TextBlock x:Name="LockStatusText"
+                   DockPanel.Dock="Right"
+                   Margin="12,0,12,0"
+                   VerticalAlignment="Center"
+                   FontWeight="Bold"
+                   Foreground="Green"
+                   Text="Unlocked"/>    
+
                 <Menu DockPanel.Dock="Left"
               Background="White"
               Foreground="Black">
@@ -53,11 +60,10 @@
                     <MenuItem Header="Database">
                         <MenuItem Header="Open Database Browser (Ctrl + Shift + O)" Click="OpenDB_Click"/>
                         <MenuItem Header="Save to Database (Ctrl + Shift + S)" Click="SaveDB_Click"/>
-                        <MenuItem Header="Import from Database (Ctrl + Shift + I)" Click="ImportFromDB_Click"/>
                     </MenuItem>
 
                     <MenuItem Header="Diagram">
-                        <MenuItem Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
+                        <MenuItem x:Name="LockButton" Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
                         <MenuItem Header="Interpolate Points (Ctrl + I)" Click="InterpolatePoints_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
                         <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
