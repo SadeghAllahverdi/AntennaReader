@@ -15,14 +15,17 @@ namespace AntennaReader.Models
 
         // 1. Antenna name -> antannaCode_stationName
         public string AntennaName { get; set; } = string.Empty;
-        // 2. State 
+        
+        // 2. Antenna Owner
+        public string AntennaOwner { get; set; } = string.Empty;
+        // 3. State 
         public string State { get; set; } = string.Empty;
 
-        // 3. City
+        // 4. City
         public string City { get; set; } = string.Empty;
-        // 2. creation at
+        // 5. creation at
         public DateTime CreateDate { get; set; }
-        // 3. list of measurements
+        // 6. list of measurements
         public List<AntennaMeasurement> Measurements { get; set; } = new List<AntennaMeasurement>();
 
     }

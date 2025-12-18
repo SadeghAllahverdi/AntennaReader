@@ -2,6 +2,8 @@
 using System.Configuration;
 using System.Data;
 using System.Windows;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace AntennaReader
 {
@@ -16,9 +18,14 @@ namespace AntennaReader
 
             try
             {
-                AppPaths.EnsureDBExists();
+
+                AppPaths.EnsureFolderExists();
                 using (var db = new AppDbContext())
-                {
+                {   
+                    // I added these 2 lines for debugging 
+                    var conn = db.Database.GetDbConnection();
+                    MessageBox.Show($"DataBase Path = {AppPaths.DBPath}\nConnection Source = {conn.DataSource}", "Database Check", MessageBoxButton.OK, MessageBoxImage.Information);
+
                     db.Database.EnsureCreated();
                 }
             }

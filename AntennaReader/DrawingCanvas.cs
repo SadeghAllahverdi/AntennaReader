@@ -41,6 +41,7 @@ namespace AntennaReader
         private List<int> _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };    // contour levels in dB
 
         private bool _isPerformingUndoRedo = false; // are we doing undo-redo?
+        public bool HasDiagram => this._startPoint != null && this._endPoint != null;
 
         public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
         public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
@@ -215,7 +216,7 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Event Handler (Key Down)
+        #region Event Handler (Key Down rotation)
         /// <summary>
         /// handles when keyboard E or Q is pressed -> rotates background image if diagram is locked
         /// </summary>
@@ -223,23 +224,67 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void DrawingCanvas_KeyDown(object sender, KeyEventArgs e)
         {
+            // check if diagram is defined
+            if (this._startPoint == null || this._endPoint == null)
+            {
+                return;
+            }
             // check if diagram is locked
             if (!this._isLocked)
             {
                 return;
             }
+
+            bool eventHandled = false;
+
             // rotate background counter clockwise 
             if (e.Key == Key.Q)
             {
                 this._backgroundRotation -= 1.0;
-                InvalidateVisual();
+                eventHandled = true;
             }
             // rotate background clockwise
             else if (e.Key == Key.E)
             {
                 this._backgroundRotation += 1.0;
-                InvalidateVisual();
+                eventHandled = true;
             }
+
+            else if (e.Key == Key.Up)
+            {
+                this._startPoint = new Point(this._startPoint.Value.X, this._startPoint.Value.Y - 10);
+                this._endPoint = new Point(this._endPoint.Value.X, this._endPoint.Value.Y - 10);
+                eventHandled = true;
+            }
+
+            else if (e.Key == Key.Right)
+            {
+                this._startPoint = new Point(this._startPoint.Value.X + 10, this._startPoint.Value.Y);
+                this._endPoint = new Point(this._endPoint.Value.X + 10, this._endPoint.Value.Y);
+                eventHandled = true;
+            }
+
+            else if (e.Key == Key.Left)
+            {
+                this._startPoint = new Point(this._startPoint.Value.X - 10, this._startPoint.Value.Y);
+                this._endPoint = new Point(this._endPoint.Value.X - 10, this._endPoint.Value.Y);
+                eventHandled = true;
+            }
+
+            else if (e.Key == Key.Down)
+            {
+                this._startPoint = new Point(this._startPoint.Value.X, this._startPoint.Value.Y + 10);
+                this._endPoint = new Point(this._endPoint.Value.X, this._endPoint.Value.Y + 10);
+                eventHandled = true;
+            }
+
+            if (eventHandled)
+            {
+                e.Handled = true; 
+                this._UpdateMeasurements(); 
+                this.InvalidateVisual();
+            }
+
         }
         #endregion
 
