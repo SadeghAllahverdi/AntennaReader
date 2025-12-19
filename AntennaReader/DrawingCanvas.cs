@@ -49,6 +49,10 @@ namespace AntennaReader
         public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
         private const int maxUndoRedoSteps = 30; // maximum undo-redo steps
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store points
+
+        private bool _isEqoDistMode = false;
+        private int _eqoDistMaxDb = 30;
+
         #endregion
 
         #region Constructor 
@@ -382,15 +386,16 @@ namespace AntennaReader
             foreach (int cr in this._contours)
             {
                 // calculate rx and ry based on contour value
-                double rx = (rect.Width / 2) * Math.Pow(10, -cr / 20.0);  // rx
-                double ry = (rect.Height / 2) * Math.Pow(10, -cr / 20.0); // ry
+                double r = this.DistanceFromDb(cr);
+                double rx = (rect.Width / 2) * r;
+                double ry = (rect.Height / 2) * r;
                 // define ellipse 
                 EllipseGeometry contourEllipse = new EllipseGeometry(center, rx, ry);
                 // draw contour ellipse
                 dc.DrawGeometry(null, new Pen(Brushes.LightGray, 1), contourEllipse);
                 // label
                 FormattedText text = new FormattedText(
-                    $"{cr}°",
+                    $"{cr}dB",
                     CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
                     new Typeface("Arial"),
@@ -438,6 +443,53 @@ namespace AntennaReader
         }
         #endregion
 
+        #region Updated Code -> Calc for eqo Dist
+        private double DbFromDistance(double distance)
+        {
+            distance = Math.Clamp(distance, 0.0, 1.0);
+            if (this._isEqoDistMode)
+            {
+                return Math.Clamp((1.0 - distance) * this._eqoDistMaxDb, 0.0, _eqoDistMaxDb);
+            }
+
+            return Math.Clamp(-20.0 * Math.Log10(Math.Max(distance, 1e-6)), 0.0, 30.0);
+        }
+
+        private double DistanceFromDb(double db)
+        {
+            if (this._isEqoDistMode)
+            {
+                db = Math.Clamp(db, 0.0, this._eqoDistMaxDb);
+                return 1.0 - (db / this._eqoDistMaxDb);
+            }
+
+            db = Math.Clamp(db, 0.0, 30.0);
+            return Math.Pow(10.0, -db / 20.0);
+        }
+
+        public void EnableFlatMode(int maxDb)
+        {
+            this._isEqoDistMode = true;
+            this._eqoDistMaxDb = Math.Max(1, maxDb);
+
+            this._contours = Enumerable.Range(1, this._eqoDistMaxDb).ToList();
+
+            _UpdateMeasurements();
+            InvalidateVisual();
+        }
+
+        public void EnableLogMode()
+        {
+            this._isEqoDistMode = false;  // reset eqo dist flag
+            this._eqoDistMaxDb = 30;    // reset max db for eqo dist
+
+            _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
+
+            _UpdateMeasurements();
+            InvalidateVisual();
+        }
+        #endregion
+
         #region Helper Function (Trim State Stack)
         /// <summary>
         /// keeps the undo and redo stack withing a certain limit
@@ -475,7 +527,9 @@ namespace AntennaReader
                 this._startPoint,
                 this._endPoint,
                 this.measurements,
-                this._isLocked
+                this._isLocked,
+                this._isEqoDistMode,
+                this._eqoDistMaxDb
             );
 
             this.UndoStack.Push(currentState); // push current state to undo stack
@@ -502,7 +556,9 @@ namespace AntennaReader
                this._startPoint,
                this._endPoint,
                this.measurements,
-               this._isLocked
+               this._isLocked,
+               this._isEqoDistMode,
+               this._eqoDistMaxDb
             );
             this.RedoStack.Push(currentState);
             this.TrimStateStack(this.RedoStack); 
@@ -537,7 +593,9 @@ namespace AntennaReader
                this._startPoint,
                this._endPoint,
                this.measurements,
-               this._isLocked
+               this._isLocked,
+               this._isEqoDistMode,
+               this._eqoDistMaxDb
             );
             this.UndoStack.Push(currentState);
             this.TrimStateStack(this.UndoStack);
@@ -853,11 +911,7 @@ namespace AntennaReader
             double distance = Math.Sqrt(x * x + y * y);
 
             // 1. calculate db value based on distance
-            double dbValue = 30.0;
-            if (distance > 0)
-            {
-                dbValue = Math.Max(0, Math.Min(-20 * Math.Log10(distance), 30));
-            }
+            double dbValue = DbFromDistance(distance);
 
             // 2. find closest angle to the recorded position
             double lowestDiviation = double.PositiveInfinity;
@@ -888,7 +942,7 @@ namespace AntennaReader
 
             // 3. calculate the descrete position based on closest angle and db value
             double rad = (closestAngle - 90) * Math.PI / 180.0;
-            double linear = Math.Pow(10, -dbValue / 20);
+            double linear = DistanceFromDb(dbValue);
             double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
             double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
 
@@ -920,7 +974,7 @@ namespace AntennaReader
                 double dbValue = entry.Value.Item1;
                 // recalculate positions based on new diagram dimentions
                 double rad = (angle - 90) * Math.PI / 180.0;
-                double linear = Math.Pow(10, -dbValue / 20);
+                double linear = DistanceFromDb(dbValue);
                 double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
                 double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
                 Point point = new Point(px, py);
@@ -979,7 +1033,7 @@ namespace AntennaReader
                     double db = result[upperAngle].Item1;
                     // recalculate position based on angle and interpolated db value
                     double rad = (currentAngle - 90) * Math.PI / 180.0;
-                    double linear = Math.Pow(10, -db / 20);
+                    double linear = DistanceFromDb(db);
                     double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
                     double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
                     Point point = new Point(px, py);
@@ -992,7 +1046,7 @@ namespace AntennaReader
                     double db = result[lowerAngle].Item1;
 
                     double rad = (currentAngle - 90) * Math.PI / 180.0;
-                    double linear = Math.Pow(10, -db / 20);
+                    double linear = DistanceFromDb(db);
                     double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
                     double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
                     Point point = new Point(px, py);
@@ -1010,7 +1064,7 @@ namespace AntennaReader
                     double interpolatedDb = lowerDb + alpha * (upperDb - lowerDb);
                     // recalculate position based on angle and interpolated db value
                     double rad = (currentAngle - 90) * Math.PI / 180.0;
-                    double linear = Math.Pow(10, -interpolatedDb / 20);
+                    double linear = DistanceFromDb(interpolatedDb);
                     double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
                     double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
                     Point point = new Point(px, py);
