@@ -17,6 +17,9 @@
         <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SaveDBCommand}"/>
 
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
+        <KeyBinding Key="F" Modifiers="Ctrl" Command="{x:Static local:MainWindow.EqoDistCommand}"/>
+        <KeyBinding Key="Up" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.EqoDistIncCommand}"/>
+        <KeyBinding Key="Down" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.EqoDistDecCommand}"/>
         <KeyBinding Key="I" Modifiers="Ctrl" Command="{x:Static local:MainWindow.InterpolatePointsCommand}"/>
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
@@ -64,6 +67,7 @@
 
                     <MenuItem Header="Diagram">
                         <MenuItem x:Name="LockButton" Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
+                        <MenuItem x:Name="EqoDistButton" Header="Equal-Distance (Ctrl + F)" Click="EqoDistButton_Click"/>
                         <MenuItem Header="Interpolate Points (Ctrl + I)" Click="InterpolatePoints_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
                         <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>

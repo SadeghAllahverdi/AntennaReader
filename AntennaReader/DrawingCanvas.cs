@@ -256,6 +256,33 @@ namespace AntennaReader
                 eventHandled = true;
             }
 
+            else if (e.Key == Key.A) // rotate measurements CCW by 10°
+            {
+                this._SaveState();
+                Dictionary<int, (double, Point)> rotated = new Dictionary<int, (double, Point)>();
+                foreach (var kvp in this.measurements)
+                {
+                    int newAngle = (kvp.Key - 10) % 360;
+                    if (newAngle < 0) newAngle += 360;
+                    rotated[newAngle] = (kvp.Value.Item1, new Point(0, 0));
+                }
+                this.measurements = rotated;
+                eventHandled = true;
+            }
+
+            else if (e.Key == Key.D) // rotate measurements CW by 10°
+            {
+                this._SaveState();
+                Dictionary<int, (double, Point)> rotated = new Dictionary<int, (double, Point)>();
+                foreach (var kvp in this.measurements)
+                {
+                    int newAngle = (kvp.Key + 10) % 360;
+                    rotated[newAngle] = (kvp.Value.Item1, new Point(0, 0));
+                }
+                this.measurements = rotated;
+                eventHandled = true;
+            }
+
             else if (e.Key == Key.Up)
             {
                 this._startPoint = new Point(this._startPoint.Value.X, this._startPoint.Value.Y - 10);
@@ -569,6 +596,11 @@ namespace AntennaReader
             this._endPoint = prevState.EndPoint;
             this.measurements = new Dictionary<int, (double, Point)>(prevState.Measurements);
             this._isLocked = prevState.IsLocked;
+            this._isEqoDistMode = prevState.IsEqoDistanceMode;
+            this._eqoDistMaxDb = Math.Max(1, prevState.EqoDistanceMaxDb);
+            this._contours = this._isEqoDistMode ? Enumerable.Range(1, this._eqoDistMaxDb).ToList()
+                                                 : new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
+            this._UpdateMeasurements();
 
             this._isPerformingUndoRedo = false; // reset flag -> not performing undo-redo
             this.InvalidateVisual(); // update visuals
@@ -605,6 +637,11 @@ namespace AntennaReader
             this._endPoint = nextState.EndPoint;
             this.measurements = new Dictionary<int, (double, Point)>(nextState.Measurements);
             this._isLocked = nextState.IsLocked;
+            this._isEqoDistMode = nextState.IsEqoDistanceMode;
+            this._eqoDistMaxDb = Math.Max(1, nextState.EqoDistanceMaxDb);
+            this._contours = this._isEqoDistMode ? Enumerable.Range(1, this._eqoDistMaxDb).ToList()
+                                                 : new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
+            this._UpdateMeasurements();
 
             this._isPerformingUndoRedo = false; // reset flag -> not performing undo-redo
             this.InvalidateVisual(); // update visuals
@@ -852,6 +889,11 @@ namespace AntennaReader
             this.measurements.Clear();
             this._resizeDirection = "";
             // update visuals
+
+            this._isEqoDistMode = false;
+            this._eqoDistMaxDb = 30;
+            this._contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
+
             this.InvalidateVisual();
         }
         #endregion
