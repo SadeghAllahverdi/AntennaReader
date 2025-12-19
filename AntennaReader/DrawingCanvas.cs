@@ -27,6 +27,8 @@ namespace AntennaReader
         #region Attributes
         private BitmapImage? _backgroundImage = null;   // background image
         private double _backgroundRotation = 0.0;       // background rotation
+        private double _bgDrawX = 0.0;               // background draw x position
+        private double _bgDrawY = 0.0;               // background draw y position
 
         private Point? _startPoint = null;              // start point for draw
         private Point? _endPoint = null;                // end point for draw
@@ -216,7 +218,7 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Event Handler (Key Down rotation)
+        #region Event Handler (Key Down)
         /// <summary>
         /// handles when keyboard E or Q is pressed -> rotates background image if diagram is locked
         /// </summary>
@@ -254,6 +256,9 @@ namespace AntennaReader
             {
                 this._startPoint = new Point(this._startPoint.Value.X, this._startPoint.Value.Y - 10);
                 this._endPoint = new Point(this._endPoint.Value.X, this._endPoint.Value.Y - 10);
+
+                this._bgDrawY -= 10;
+
                 eventHandled = true;
             }
 
@@ -261,6 +266,9 @@ namespace AntennaReader
             {
                 this._startPoint = new Point(this._startPoint.Value.X + 10, this._startPoint.Value.Y);
                 this._endPoint = new Point(this._endPoint.Value.X + 10, this._endPoint.Value.Y);
+
+                this._bgDrawX += 10;
+
                 eventHandled = true;
             }
 
@@ -268,6 +276,9 @@ namespace AntennaReader
             {
                 this._startPoint = new Point(this._startPoint.Value.X - 10, this._startPoint.Value.Y);
                 this._endPoint = new Point(this._endPoint.Value.X - 10, this._endPoint.Value.Y);
+
+                this._bgDrawX -= 10;
+
                 eventHandled = true;
             }
 
@@ -275,13 +286,16 @@ namespace AntennaReader
             {
                 this._startPoint = new Point(this._startPoint.Value.X, this._startPoint.Value.Y + 10);
                 this._endPoint = new Point(this._endPoint.Value.X, this._endPoint.Value.Y + 10);
+
+                this._bgDrawY += 10;
+
                 eventHandled = true;
             }
 
             if (eventHandled)
             {
-                e.Handled = true; 
-                this._UpdateMeasurements(); 
+                e.Handled = true;
+                this._UpdateMeasurements();
                 this.InvalidateVisual();
             }
 
@@ -303,17 +317,20 @@ namespace AntennaReader
                 double bgWidth = this._backgroundImage.PixelWidth;
                 double bgHeight = this._backgroundImage.PixelHeight;
                 // start point to draw bg image
-                double bgDrawX = (this.ActualWidth - bgWidth) / 2;
-                double bgDrawY = (this.ActualHeight - bgHeight) / 2;
+                if (this._bgDrawX == 0.0 && this._bgDrawY == 0.0)
+                {
+                    this._bgDrawX = (this.ActualWidth - bgWidth) / 2;
+                    this._bgDrawY = (this.ActualHeight - bgHeight) / 2;
+                }
                 // center of bg image
-                double bgCenterX = bgDrawX + bgWidth / 2;
-                double bgCenterY = bgDrawY + bgHeight / 2;
+                double bgCenterX = this._bgDrawX + bgWidth / 2;
+                double bgCenterY = this._bgDrawY + bgHeight / 2;
 
                 dc.PushTransform(new TranslateTransform(bgCenterX, bgCenterY));    // shift coordinate system to image center
                 dc.PushTransform(new RotateTransform(this._backgroundRotation));   // rotate coordinate system
                 dc.PushTransform(new TranslateTransform(-bgCenterX, -bgCenterY));  // reset coordinate system
                 // draw image
-                dc.DrawImage(this._backgroundImage, new Rect(bgDrawX, bgDrawY, bgWidth, bgHeight));
+                dc.DrawImage(this._backgroundImage, new Rect(this._bgDrawX, this._bgDrawY, bgWidth, bgHeight));
                 // remove all transforms
                 dc.Pop();
                 dc.Pop();
@@ -790,6 +807,8 @@ namespace AntennaReader
             // reset background image and rotation
             this._backgroundImage = null;
             this._backgroundRotation = 0.0;
+            this._bgDrawX = 0.0;
+            this._bgDrawY= 0.0;
             // update visuals
             InvalidateVisual();
         }

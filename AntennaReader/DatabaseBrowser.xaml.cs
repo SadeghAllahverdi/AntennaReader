@@ -102,6 +102,30 @@ namespace AntennaReader
         }
         #endregion
 
+        #region Function (Safe File Name)
+        /// <summary>
+        /// changes a string to a safe file name by removing invalid chars.
+        /// </summary>
+        private static string SafeFileName(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "Unknown";
+            StringBuilder sb = new StringBuilder(input.Length);
+            foreach (char c in input)
+            {
+                if (Path.GetInvalidFileNameChars().Contains(c))
+                {
+                    sb.Append('_');
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+
+            return sb.ToString().Trim().Replace(" ", "_");
+        }
+        #endregion
+
         #region Text Changed -> Search Bar
         /// <summary>
         /// refreshes the diagram list based on search bar input
@@ -213,7 +237,7 @@ namespace AntennaReader
                         }
                     }
                 }
-                MessageBox.Show($"Exported {selectedDiagrams.Count} diagram(s) to CSV \n{AppPaths.ExportFolder}", "Success", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Exported {selectedDiagrams.Count} diagram(s) to CSV \n{AppPaths.ExportFolder}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 OpenExportFolder();
 
             }
@@ -245,7 +269,7 @@ namespace AntennaReader
                     foreach (AntennaDiagram diagram in selectedDiagrams)
                     {
                         AntennaDiagram result = db.AntennaDiagrams.Include(d => d.Measurements).First(d => d.Id == diagram.Id);
-                        string filename = (result.AntennaName ?? "Unknown").Replace(" ", "_");// safe filename -> replace space
+                        string filename = SafeFileName(result.AntennaName);
                         string filePath = System.IO.Path.Combine(AppPaths.ExportFolder, $"{filename}.PAT");
                         // write PAT file
                         using (StreamWriter writer = new StreamWriter(filePath))
