@@ -31,6 +31,9 @@ namespace AntennaReader
         public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
 
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
+        public static RoutedUICommand EqoDistCommand = new RoutedUICommand();
+        public static RoutedUICommand EqoDistIncCommand = new RoutedUICommand();
+        public static RoutedUICommand EqoDistDecCommand = new RoutedUICommand();
         public static RoutedUICommand InterpolatePointsCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
@@ -38,6 +41,9 @@ namespace AntennaReader
         public static RoutedUICommand UndoCommand = new RoutedUICommand();
         public static RoutedUICommand RedoCommand = new RoutedUICommand();
         #endregion
+
+        private int _eqoDistMaxDb = 14;
+        private bool _eqoDistEnabled = false;
 
         #region Constructor
         public MainWindow()
@@ -52,6 +58,9 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
 
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
+            CommandBindings.Add(new CommandBinding(EqoDistCommand, EqoDistButton_Click));
+            CommandBindings.Add(new CommandBinding(EqoDistIncCommand, EqoDistInc_Click));
+            CommandBindings.Add(new CommandBinding(EqoDistDecCommand, EqoDistDec_Click));
             CommandBindings.Add(new CommandBinding(InterpolatePointsCommand, InterpolatePoints_Click));
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
@@ -243,6 +252,9 @@ namespace AntennaReader
             drawingCanvas.DeleteDiagram();
             LockStatusText.Foreground = Brushes.Green;
             LockStatusText.Text = "Unlocked";
+
+            EqoDistButton.IsChecked = false;
+            EqoDistButton.Header = "Equal-Distance";
         }
         #endregion
 
@@ -302,6 +314,56 @@ namespace AntennaReader
             }
             drawingCanvas.InterpolateMeasurements();
         }
+        #endregion
+
+        #region Click -> Eqo Distance
+
+        private void EqoDistButton_Click(object sender, RoutedEventArgs e)
+        {
+            _eqoDistEnabled = !_eqoDistEnabled;
+
+            if (_eqoDistEnabled)
+            {
+                drawingCanvas.EnableFlatMode(_eqoDistMaxDb);
+                EqoDistButton.Header = $"Equal-Distance (Max {_eqoDistMaxDb} dB)";
+            }
+            else
+            {
+                drawingCanvas.EnableLogMode();
+                EqoDistButton.Header = "Equal-Distance";
+            }
+
+            drawingCanvas.Focus();
+        }
+
+        private void EqoDistInc_Click(object sender, RoutedEventArgs e)
+        {
+            if (drawingCanvas.IsLocked)
+                return;
+            _eqoDistMaxDb = Math.Min(_eqoDistMaxDb + 1, 25);
+
+            if (_eqoDistEnabled)
+            {
+                drawingCanvas.EnableFlatMode(_eqoDistMaxDb);
+                EqoDistButton.Header = $"Equal-Distance (Max {_eqoDistMaxDb} dB)";
+                drawingCanvas.Focus();
+            }
+        }
+
+        private void EqoDistDec_Click(object sender, RoutedEventArgs e)
+        {
+            if (drawingCanvas.IsLocked)
+                return;
+            _eqoDistMaxDb = Math.Max(_eqoDistMaxDb - 1, 1);
+
+            if (_eqoDistEnabled)
+            {
+                drawingCanvas.EnableFlatMode(_eqoDistMaxDb);
+                EqoDistButton.Header = $"Equal-Distance (Max {_eqoDistMaxDb} dB)";
+                drawingCanvas.Focus();
+            }
+        }
+
         #endregion
 
         #region Click -> Undo

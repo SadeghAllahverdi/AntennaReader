@@ -17,12 +17,17 @@ namespace AntennaReader
         public Dictionary<int, (double, Point)> Measurements { get; set; }
         public bool IsLocked { get; set; }
 
-        public DiagramState(Point? startPoint, Point? endPoint, Dictionary<int, (double, Point)> measurements, bool isLocked) 
+        public bool IsEqoDistanceMode { get; set; }
+        public int EqoDistanceMaxDb { get; set; }
+
+        public DiagramState(Point? startPoint, Point? endPoint, Dictionary<int, (double, Point)> measurements, bool isLocked, bool IsEqoDistanceMode, int EqoDistanceMaxDb) 
         {
             this.StartPoint = startPoint;
             this.EndPoint = endPoint;
             this.Measurements = new Dictionary<int, (double, Point)>(measurements);
             this.IsLocked = isLocked;
+            this.IsEqoDistanceMode = IsEqoDistanceMode;
+            this.EqoDistanceMaxDb = Math.Max(1, EqoDistanceMaxDb);
         }
         /// <summary>
         /// Defualt constructor
@@ -33,6 +38,8 @@ namespace AntennaReader
             this.EndPoint = null;
             this.Measurements = new Dictionary<int, (double, Point)>();
             this.IsLocked = false;
+            this.IsEqoDistanceMode = false;
+            this.EqoDistanceMaxDb = 30;
         }
     }
 }
