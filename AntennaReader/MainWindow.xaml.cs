@@ -42,7 +42,7 @@ namespace AntennaReader
         public static RoutedUICommand RedoCommand = new RoutedUICommand();
         #endregion
 
-        private int _eqoDistMaxDb = 14;
+        private int _eqoDistMaxDb = 15;
         private bool _eqoDistEnabled = false;
 
         #region Constructor
@@ -169,17 +169,17 @@ namespace AntennaReader
                 return;
             }
 
-            // get Antenna Name
-            string antennaName = Microsoft.VisualBasic.Interaction.InputBox("Enter Antenna Name: (antennaCode_stationName):", "Antenna Code + Station Name");
-            // check if antenna Name is valid
-            if (string.IsNullOrWhiteSpace(antennaName))
+            // get Antenna Information
+            SaveDialog dlg = new SaveDialog();
+            bool? result = dlg.ShowDialog();
+            if (result != true)
             {
                 return;
             }
-            // get owner, state and city (optional)
-            string owner = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter Owner (e.g. DB Netz):", "Owner");
-            string state = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter State (e.g. NRW):", "State");
-            string city = Microsoft.VisualBasic.Interaction.InputBox("(Optional) Enter City (e.g. Dortmond):", "City");
+            string antennaName = dlg.antennaName;
+            string owner = dlg.owner;
+            string state = dlg.state;
+            string city = dlg.city;
 
             try
             {
