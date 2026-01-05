@@ -347,11 +347,17 @@ namespace AntennaReader
                 // image width and height
                 double bgWidth = this._backgroundImage.PixelWidth;
                 double bgHeight = this._backgroundImage.PixelHeight;
-                // start point to draw bg image
+                // the start point to draw bg image
                 if (this._bgDrawX == 0.0 && this._bgDrawY == 0.0)
                 {
-                    this._bgDrawX = (this.ActualWidth - bgWidth) / 2;
-                    this._bgDrawY = (this.ActualHeight - bgHeight) / 2;
+                    double screenCenterX = this.ActualWidth/ 2;
+                    double screenCenterY = this.ActualHeight / 2;
+
+                    double worldCenterx = (screenCenterX - this._origin.X) / _zoomFactor;
+                    double worldCenterY = (screenCenterY - this._origin.Y) / _zoomFactor;
+
+                    this._bgDrawX = worldCenterx - (bgWidth / 2);
+                    this._bgDrawY = worldCenterY - (bgHeight / 2);
                 }
                 // center of bg image
                 double bgCenterX = this._bgDrawX + bgWidth / 2;
