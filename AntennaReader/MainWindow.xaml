@@ -67,7 +67,7 @@
 
                     <MenuItem Header="Diagram">
                         <MenuItem x:Name="LockButton" Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
-                        <MenuItem x:Name="EqoDistButton" Header="Equal-Distance (Ctrl + F)" Click="EqoDistButton_Click"/>
+                        <MenuItem x:Name="EqoDistButton" Header="Equal-Distance (Ctrl + F) -> adjust: (Ctrl + Shift + UP / Down) " Click="EqoDistButton_Click"/>
                         <MenuItem Header="Interpolate Points (Ctrl + I)" Click="InterpolatePoints_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
                         <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
