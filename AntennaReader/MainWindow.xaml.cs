@@ -34,7 +34,7 @@ namespace AntennaReader
         public static RoutedUICommand EqoDistCommand = new RoutedUICommand();
         public static RoutedUICommand EqoDistIncCommand = new RoutedUICommand();
         public static RoutedUICommand EqoDistDecCommand = new RoutedUICommand();
-        public static RoutedUICommand InterpolatePointsCommand = new RoutedUICommand();
+        public static RoutedUICommand FinishInterpolationCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
 
@@ -61,7 +61,7 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(EqoDistCommand, EqoDistButton_Click));
             CommandBindings.Add(new CommandBinding(EqoDistIncCommand, EqoDistInc_Click));
             CommandBindings.Add(new CommandBinding(EqoDistDecCommand, EqoDistDec_Click));
-            CommandBindings.Add(new CommandBinding(InterpolatePointsCommand, InterpolatePoints_Click));
+            CommandBindings.Add(new CommandBinding(FinishInterpolationCommand, FinishInterpolation_Click));
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
 
@@ -299,20 +299,33 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Interpolate Points
+        #region Click -> Interpolation Mode
         /// <summary>
-        /// handles when "Interpolate Points" is clicked
+        /// handles when an interpolation mode is selected from the menu
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void InterpolatePoints_Click(object sender, RoutedEventArgs e)
+        private void InterpMode_Click(object sender, RoutedEventArgs e)
         {
-            if (drawingCanvas.measurements.Count == 0)
+            if (sender is MenuItem item &&
+                Enum.TryParse<InterpolationMode>(item.Tag?.ToString(), out var mode))
             {
-                MessageBox.Show("Please add at least one point!", "No Point", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                drawingCanvas.InterpolationMode = mode;
+            }
+        }
+        #endregion
+
+        #region Click -> Finish Interpolation
+        /// <summary>
+        /// Bakes the current interpolation into all 36 clickable points
+        /// so the user can fine-tune each angle individually.
+        /// </summary>
+        private void FinishInterpolation_Click(object sender, RoutedEventArgs e)
+        {
+            if (drawingCanvas.measurements.Count < 2)
+            {
+                MessageBox.Show("Please click at least 2 points first!", "Not enough points", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
             }
-            drawingCanvas.InterpolateMeasurements();
+            drawingCanvas.BakeInterpolation();
         }
         #endregion
 
@@ -338,8 +351,6 @@ namespace AntennaReader
 
         private void EqoDistInc_Click(object sender, RoutedEventArgs e)
         {
-            if (drawingCanvas.IsLocked)
-                return;
             _eqoDistMaxDb = Math.Min(_eqoDistMaxDb + 1, 25);
 
             if (_eqoDistEnabled)
@@ -352,8 +363,6 @@ namespace AntennaReader
 
         private void EqoDistDec_Click(object sender, RoutedEventArgs e)
         {
-            if (drawingCanvas.IsLocked)
-                return;
             _eqoDistMaxDb = Math.Max(_eqoDistMaxDb - 1, 1);
 
             if (_eqoDistEnabled)

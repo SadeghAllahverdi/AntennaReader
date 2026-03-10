@@ -49,6 +49,18 @@ namespace AntennaReader
         public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
         private const int maxUndoRedoSteps = 30; // maximum undo-redo steps
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store points
+        private InterpolationMode _interpolationMode = InterpolationMode.Monotone;
+        private Dictionary<int, double> _interpolatedMeasurements = new Dictionary<int, double>();
+        public InterpolationMode InterpolationMode
+        {
+            get => _interpolationMode;
+            set
+            {
+                _interpolationMode = value;
+                _UpdateMeasurements();
+                InvalidateVisual();
+            }
+        }
 
         private bool _isEqoDistMode = false;
         private int _eqoDistMaxDb = 30;
@@ -146,6 +158,7 @@ namespace AntennaReader
                     double dbValue = result.Value.dbValue;
                     Point point = result.Value.point;
                     this.measurements[angle] = (dbValue, point);
+                    this._UpdateMeasurements();
                     this.InvalidateVisual();
                     return;
                 }
@@ -443,33 +456,48 @@ namespace AntennaReader
                 dc.DrawText(text, new Point(tx - text.Width / 2, ty - text.Height / 2));
             }
 
-            // draw measured points
+            // draw raw measured dots
+            bool isApproximating = _interpolationMode == InterpolationMode.BSpline;
+
+            Brush fillColor = isApproximating ? Brushes.Cyan : Brushes.Yellow;
+            Brush strokeColor = isApproximating ? Brushes.DodgerBlue : Brushes.Orange;
+            Pen strokePen = new Pen(strokeColor, 1);
+            double dotSize = isApproximating ? 1.5 : 3;
+
+
             foreach (KeyValuePair<int, (double, Point)> entry in this.measurements)
             {
-                int angle = entry.Key;           // angle
-                Point point = entry.Value.Item2; // position
-                // draw point
-                dc.DrawEllipse(Brushes.Yellow, new Pen(Brushes.Orange, 1), point, 2, 2);
+                dc.DrawEllipse(fillColor, strokePen, entry.Value.Item2, dotSize, dotSize);
             }
-            // if more than one point -> connect with lines
-            if (this.measurements.Count > 1)
+
+
+            // draw interpolated curve from dense 0-359 dictionary
+            if (_interpolatedMeasurements.Count > 1)
             {
-                List<int> sortedAngles = this.measurements.Keys.OrderBy(a => a).ToList(); // angles (sorted)
-                for (int i = 0; i < sortedAngles.Count - 1; i++)
+                Rect rect2 = new Rect(this._startPoint.Value, this._endPoint.Value);
+                Point center2 = new Point(rect2.X + rect2.Width / 2, rect2.Y + rect2.Height / 2);
+
+                List<int> sortedDegrees = _interpolatedMeasurements.Keys.OrderBy(a => a).ToList();
+
+                // convert each dB value to a canvas point on the fly
+                Point DegToPoint(int deg)
                 {
-                    Point p1 = this.measurements[sortedAngles[i]].Item2; // position 1
-                    Point p2 = this.measurements[sortedAngles[i + 1]].Item2; // position 2
-                    // draw line from p1 to p2
-                    dc.DrawLine(new Pen(Brushes.Orange, 1), p1, p2);
+                    double db = _interpolatedMeasurements[deg];
+                    double rad = (deg - 90) * Math.PI / 180.0;
+                    double linear = DistanceFromDb(db);
+                    double px = center2.X + (rect2.Width / 2) * linear * Math.Cos(rad);
+                    double py = center2.Y + (rect2.Height / 2) * linear * Math.Sin(rad);
+                    return new Point(px, py);
                 }
-                if (sortedAngles.Count == 36) // if all points are measured -> connect last to fist
+
+                for (int i = 0; i < sortedDegrees.Count; i++)
                 {
-                    Point first = this.measurements[sortedAngles[0]].Item2; //first point
-                    Point last = this.measurements[sortedAngles[35]].Item2; // last point
-                    // draw line from last to first
-                    dc.DrawLine(new Pen(Brushes.Orange, 1), last, first);
+                    dc.DrawLine(new Pen(Brushes.Orange, 1),
+                        DegToPoint(sortedDegrees[i]),
+                        DegToPoint(sortedDegrees[(i + 1) % sortedDegrees.Count]));
                 }
             }
+
             // remove all transforms
             dc.Pop();
             dc.Pop();
@@ -1031,97 +1059,43 @@ namespace AntennaReader
             }
             // update measurements
             this.measurements = updatedMeasurements;
-        }
+            Dictionary<int, double> rawDb = this.measurements
+            .ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
+                this._interpolatedMeasurements = SplineInterpolator.Interpolate(rawDb, this._interpolationMode);
+            }
         #endregion
 
-        #region Helper Function (Interpolate Measurments)
+        #region Helper Function (Bake Interpolation)
         /// <summary>
-        /// Uses Linear Interpolation to fill in missing measurement points
+        /// Copies the interpolated dB values back into the raw measurements at every
+        /// 10 degree angle (0, 10, 20 ... 350), so the user can fine-tune the
+        /// spline result as if they had clicked each point manually.
+        /// Wraps around from the last clicked point back to the first to close the curve.
         /// </summary>
-        public void InterpolateMeasurements()
+        public void BakeInterpolation()
         {
-            if (this.measurements.Count == 0 || this._startPoint == null || this._endPoint == null)
-            {
+            if (_interpolatedMeasurements.Count == 0 || _startPoint == null || _endPoint == null)
                 return;
-            }
-            this._SaveState(); 
-            // calculate center point
-            Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
-            Point center = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
-            // list measured angles
-            var result = new Dictionary<int, (double, Point)>(this.measurements);
-            var measuredAngles = result.Keys.OrderBy(a => a).ToList();
-            // iterate through all angles
-            for (int currentAngle = 0; currentAngle < 360; currentAngle += 10)
+
+            _SaveState();
+
+            // get raw db values from current measurements
+            Dictionary<int, double> rawDb = measurements
+                .ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
+
+            // run a full wrap-around interpolation for baking
+            // by temporarily treating the data as periodic (first point = last point + 360)
+            Dictionary<int, double> bakedDb = SplineInterpolator.InterpolateClosedLoop(rawDb, _interpolationMode);
+
+            // write all 36 angles from the closed loop result
+            for (int angle = 0; angle < 360; angle += 10)
             {
-                // if current angle was measured -> continue
-                if (measuredAngles.Contains(currentAngle))
-                {
-                    continue;
-                }
-                // initialize lower and upper bounds
-                int lowerAngle = -1;
-                int upperAngle = -1;
-                // set lower and upper bounds
-                foreach (var angle in measuredAngles)
-                {
-                    if (angle < currentAngle)
-                    {
-                        lowerAngle = angle;
-                    }
-                    if (angle > currentAngle && upperAngle == -1)
-                    {
-                        upperAngle = angle;
-                    }
-                }
-                // no lower bound
-                if (lowerAngle == -1)
-                {
-
-                    double db = result[upperAngle].Item1;
-                    // recalculate position based on angle and interpolated db value
-                    double rad = (currentAngle - 90) * Math.PI / 180.0;
-                    double linear = DistanceFromDb(db);
-                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
-                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
-                    Point point = new Point(px, py);
-
-                    result[currentAngle] = (db, point);
-                }
-                // no upper bound
-                else if (upperAngle == -1)
-                {
-                    double db = result[lowerAngle].Item1;
-
-                    double rad = (currentAngle - 90) * Math.PI / 180.0;
-                    double linear = DistanceFromDb(db);
-                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
-                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
-                    Point point = new Point(px, py);
-
-                    result[currentAngle] = (db, point);
-                }
-                // interpolation possible
-                else
-                {
-                    // calculate interpolation factor
-                    double alpha = (double)(currentAngle - lowerAngle) / (upperAngle - lowerAngle);
-                    // interpolate db values
-                    double lowerDb = result[lowerAngle].Item1;
-                    double upperDb = result[upperAngle].Item1;
-                    double interpolatedDb = lowerDb + alpha * (upperDb - lowerDb);
-                    // recalculate position based on angle and interpolated db value
-                    double rad = (currentAngle - 90) * Math.PI / 180.0;
-                    double linear = DistanceFromDb(interpolatedDb);
-                    double px = center.X + (rect.Width / 2) * linear * Math.Cos(rad);
-                    double py = center.Y + (rect.Height / 2) * linear * Math.Sin(rad);
-                    Point point = new Point(px, py);
-                    // store interpolated value
-                    result[currentAngle] = (interpolatedDb, point);
-                }
+                if (bakedDb.TryGetValue(angle, out double db))
+                    measurements[angle] = (db, new Point(0, 0));
             }
-            this.measurements = result;
-            this.InvalidateVisual();
+
+            _UpdateMeasurements();
+            InvalidateVisual();
         }
         #endregion
 

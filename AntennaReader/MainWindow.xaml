@@ -18,9 +18,10 @@
 
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
         <KeyBinding Key="F" Modifiers="Ctrl" Command="{x:Static local:MainWindow.EqoDistCommand}"/>
-        <KeyBinding Key="Up" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.EqoDistIncCommand}"/>
-        <KeyBinding Key="Down" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.EqoDistDecCommand}"/>
-        <KeyBinding Key="I" Modifiers="Ctrl" Command="{x:Static local:MainWindow.InterpolatePointsCommand}"/>
+        <KeyBinding Key="I" Modifiers="Ctrl" Command="{x:Static local:MainWindow.FinishInterpolationCommand}"/>
+        <KeyBinding Key="K" Modifiers="Ctrl" Command="{x:Static local:MainWindow.EqoDistIncCommand}"/>
+        <KeyBinding Key="J" Modifiers="Ctrl" Command="{x:Static local:MainWindow.EqoDistDecCommand}"/>
+
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
 
@@ -67,10 +68,19 @@
 
                     <MenuItem Header="Diagram">
                         <MenuItem x:Name="LockButton" Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
-                        <MenuItem x:Name="EqoDistButton" Header="Equal-Distance (Ctrl + F) -> adjust: (Ctrl + Shift + UP / Down) " Click="EqoDistButton_Click"/>
-                        <MenuItem Header="Interpolate Points (Ctrl + I)" Click="InterpolatePoints_Click"/>
+                        <MenuItem x:Name="EqoDistButton" Header="Equal-Distance (Ctrl + F) -> adjust: (Ctrl J / Ctrl K)" Click="EqoDistButton_Click"/>
+                        <MenuItem Header="Finish Interpolation (Ctrl + I)" Click="FinishInterpolation_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
                         <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
+                    </MenuItem>
+
+                    <MenuItem Header="Interpolation Mode">
+                        <MenuItem Header="Monotone" Click="InterpMode_Click" Tag="Monotone"/>
+                        <MenuItem Header="Linear"      Click="InterpMode_Click" Tag="Linear"/>
+                        <MenuItem Header="Catmull-Rom" Click="InterpMode_Click" Tag="CatmullRom"/>
+                        <MenuItem Header="Lagrange"    Click="InterpMode_Click" Tag="Lagrange"/>
+                        <MenuItem Header="B-Spline" Click="InterpMode_Click" Tag="BSpline"/>
+                        
                     </MenuItem>
 
                     <MenuItem Header="Actions">
