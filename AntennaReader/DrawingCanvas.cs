@@ -224,7 +224,7 @@ namespace AntennaReader
 
             // update zoom factor
             this._zoomFactor *= delta;
-            this._zoomFactor = Math.Clamp(this._zoomFactor, 0.1, 12.0); // clamp zoom factor to a range
+            this._zoomFactor = Math.Clamp(this._zoomFactor, 0.1, 60.0); // clamp zoom factor to a range
 
             // update origin
             double ox = p.X - pos.X * this._zoomFactor;
@@ -459,15 +459,13 @@ namespace AntennaReader
             // draw raw measured dots
             bool isApproximating = _interpolationMode == InterpolationMode.BSpline;
 
-            Brush fillColor = isApproximating ? Brushes.Cyan : Brushes.Yellow;
+            Brush fillColor = isApproximating ? Brushes.Red : Brushes.Yellow;
             Brush strokeColor = isApproximating ? Brushes.DodgerBlue : Brushes.Orange;
             Pen strokePen = new Pen(strokeColor, 1);
-            double dotSize = isApproximating ? 1.5 : 3;
-
 
             foreach (KeyValuePair<int, (double, Point)> entry in this.measurements)
             {
-                dc.DrawEllipse(fillColor, strokePen, entry.Value.Item2, dotSize, dotSize);
+                dc.DrawEllipse(fillColor, strokePen, entry.Value.Item2, 3, 3);
             }
 
 
@@ -492,7 +490,7 @@ namespace AntennaReader
 
                 for (int i = 0; i < sortedDegrees.Count; i++)
                 {
-                    dc.DrawLine(new Pen(Brushes.Orange, 1),
+                    dc.DrawLine(new Pen(Brushes.Orange, 3),
                         DegToPoint(sortedDegrees[i]),
                         DegToPoint(sortedDegrees[(i + 1) % sortedDegrees.Count]));
                 }
@@ -995,7 +993,7 @@ namespace AntennaReader
             // check distance is not zero
             if (distance != 0)
             {
-                for (int a = 0; a < 360; a += 10)
+                for (int a = 0; a < 360; a += 5)
                 {
                     int angle = a; // current angle
                     double angleRad = (angle - 90) * Math.PI / 180.0; // current angle in radian
