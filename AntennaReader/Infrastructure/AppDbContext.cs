@@ -16,6 +16,8 @@ namespace AntennaReader.Infrastructure
         // Tabels
         public DbSet<AntennaDiagram> AntennaDiagrams { get; set; } = null!;
         public DbSet<AntennaMeasurement> AntennaMeasurements { get; set; } = null!;
+        public DbSet<AntennaInterpolatedMeasurement> AntennaInterpolatedMeasurements { get; set; } = null!;
+
 
         // initialize sqlite database
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -35,7 +37,17 @@ namespace AntennaReader.Infrastructure
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<AntennaMeasurement>()
-                .HasIndex(m => new { m.AntennaDiagramId, m.Angle})
+                .HasIndex(m => new { m.AntennaDiagramId, m.Angle })
+                .IsUnique();
+
+            modelBuilder.Entity<AntennaDiagram>()
+                .HasMany(d => d.InterpolatedMeasurements)
+                .WithOne(m => m.Diagram)
+                .HasForeignKey(m => m.AntennaDiagramId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AntennaInterpolatedMeasurement>()
+                .HasIndex(m => new { m.AntennaDiagramId, m.Angle })
                 .IsUnique();
         }
     }
