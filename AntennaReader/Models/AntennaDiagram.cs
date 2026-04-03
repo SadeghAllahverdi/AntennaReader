@@ -25,8 +25,10 @@ namespace AntennaReader.Models
         public string City { get; set; } = string.Empty;
         // 5. creation at
         public DateTime CreateDate { get; set; }
-        // 6. list of measurements
-        public List<AntennaMeasurement> Measurements { get; set; } = new List<AntennaMeasurement>();
+        // original user-clicked points
+        public List<AntennaMeasurement> Measurements { get; set; } = new();
 
+        // generated/interpolated values
+        public List<AntennaInterpolatedMeasurement> InterpolatedMeasurements { get; set; } = new();
     }
 }

@@ -48,7 +48,7 @@ namespace AntennaReader
         public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
         public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
         private const int maxUndoRedoSteps = 30; // maximum undo-redo steps
-        public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store points
+        public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store measurements
         private InterpolationMode _interpolationMode = InterpolationMode.Monotone;
         private Dictionary<int, double> _interpolatedMeasurements = new Dictionary<int, double>();
         public InterpolationMode InterpolationMode
@@ -363,7 +363,7 @@ namespace AntennaReader
                 // the start point to draw bg image
                 if (this._bgDrawX == 0.0 && this._bgDrawY == 0.0)
                 {
-                    double screenCenterX = this.ActualWidth/ 2;
+                    double screenCenterX = this.ActualWidth / 2;
                     double screenCenterY = this.ActualHeight / 2;
 
                     double worldCenterx = (screenCenterX - this._origin.X) / _zoomFactor;
@@ -457,10 +457,8 @@ namespace AntennaReader
             }
 
             // draw raw measured dots
-            bool isApproximating = _interpolationMode == InterpolationMode.BSpline;
-
-            Brush fillColor = isApproximating ? Brushes.Red : Brushes.Yellow;
-            Brush strokeColor = isApproximating ? Brushes.DodgerBlue : Brushes.Orange;
+            Brush fillColor = Brushes.Yellow;
+            Brush strokeColor = Brushes.Orange;
             Pen strokePen = new Pen(strokeColor, 1);
 
             foreach (KeyValuePair<int, (double, Point)> entry in this.measurements)
@@ -502,7 +500,7 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Updated Code -> Calc for eqo Dist
+        #region Helper Function (dB From Distance)
         private double DbFromDistance(double distance)
         {
             distance = Math.Clamp(distance, 0.0, 1.0);
@@ -510,10 +508,11 @@ namespace AntennaReader
             {
                 return Math.Clamp((1.0 - distance) * this._eqoDistMaxDb, 0.0, _eqoDistMaxDb);
             }
-
             return Math.Clamp(-20.0 * Math.Log10(Math.Max(distance, 1e-6)), 0.0, 30.0);
         }
+        #endregion
 
+        #region Helper Function (Distance From dB)
         private double DistanceFromDb(double db)
         {
             if (this._isEqoDistMode)
@@ -521,29 +520,28 @@ namespace AntennaReader
                 db = Math.Clamp(db, 0.0, this._eqoDistMaxDb);
                 return 1.0 - (db / this._eqoDistMaxDb);
             }
-
             db = Math.Clamp(db, 0.0, 30.0);
             return Math.Pow(10.0, -db / 20.0);
         }
+        #endregion
 
+        #region Helper Function (Enable Flat Mode)
         public void EnableFlatMode(int maxDb)
         {
             this._isEqoDistMode = true;
             this._eqoDistMaxDb = Math.Max(1, maxDb);
-
             this._contours = Enumerable.Range(1, this._eqoDistMaxDb).ToList();
-
             _UpdateMeasurements();
             InvalidateVisual();
         }
+        #endregion
 
+        #region Helper Function (Enable Log Mode)
         public void EnableLogMode()
         {
-            this._isEqoDistMode = false;  // reset eqo dist flag
-            this._eqoDistMaxDb = 30;    // reset max db for eqo dist
-
+            this._isEqoDistMode = false;
+            this._eqoDistMaxDb = 30;
             _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
-
             _UpdateMeasurements();
             InvalidateVisual();
         }
@@ -620,7 +618,7 @@ namespace AntennaReader
                this._eqoDistMaxDb
             );
             this.RedoStack.Push(currentState);
-            this.TrimStateStack(this.RedoStack); 
+            this.TrimStateStack(this.RedoStack);
             // pop undo stack -> previous state
             DiagramState prevState = this.UndoStack.Pop();
             // reset attributes to previous state
@@ -940,7 +938,7 @@ namespace AntennaReader
             this._backgroundImage = null;
             this._backgroundRotation = 0.0;
             this._bgDrawX = 0.0;
-            this._bgDrawY= 0.0;
+            this._bgDrawY = 0.0;
             // update visuals
             InvalidateVisual();
         }
@@ -955,6 +953,7 @@ namespace AntennaReader
             this._SaveState(); // save state
             // reset measurements
             this.measurements.Clear();
+            this._interpolatedMeasurements.Clear();
             // update visuals
             InvalidateVisual();
         }
@@ -1057,43 +1056,9 @@ namespace AntennaReader
             }
             // update measurements
             this.measurements = updatedMeasurements;
-            Dictionary<int, double> rawDb = this.measurements
-            .ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
-                this._interpolatedMeasurements = SplineInterpolator.Interpolate(rawDb, this._interpolationMode);
-            }
-        #endregion
-
-        #region Helper Function (Bake Interpolation)
-        /// <summary>
-        /// Copies the interpolated dB values back into the raw measurements at every
-        /// 10 degree angle (0, 10, 20 ... 350), so the user can fine-tune the
-        /// spline result as if they had clicked each point manually.
-        /// Wraps around from the last clicked point back to the first to close the curve.
-        /// </summary>
-        public void BakeInterpolation()
-        {
-            if (_interpolatedMeasurements.Count == 0 || _startPoint == null || _endPoint == null)
-                return;
-
-            _SaveState();
-
-            // get raw db values from current measurements
-            Dictionary<int, double> rawDb = measurements
-                .ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
-
-            // run a full wrap-around interpolation for baking
-            // by temporarily treating the data as periodic (first point = last point + 360)
-            Dictionary<int, double> bakedDb = SplineInterpolator.InterpolateClosedLoop(rawDb, _interpolationMode);
-
-            // write all 36 angles from the closed loop result
-            for (int angle = 0; angle < 360; angle += 10)
-            {
-                if (bakedDb.TryGetValue(angle, out double db))
-                    measurements[angle] = (db, new Point(0, 0));
-            }
-
-            _UpdateMeasurements();
-            InvalidateVisual();
+            // extract dB values from measurements and interpolate
+            var rawDb = this.measurements.ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
+            this._interpolatedMeasurements = Interpolator.Interpolate(rawDb, this._interpolationMode);
         }
         #endregion
 
@@ -1103,20 +1068,19 @@ namespace AntennaReader
         /// </summary>
         public bool SetMeasurements(Dictionary<int, double> angleDB)
         {
-            // check if diagram is defined or there is available data
-            if(this._startPoint == null || this._endPoint == null || angleDB == null)
+            if (this._startPoint == null || this._endPoint == null || angleDB == null)
             {
                 return false;
             }
-            this._SaveState(); // save state
+            this._SaveState();
             Dictionary<int, (double, Point)> newMeasurements = new Dictionary<int, (double, Point)>();
             foreach (KeyValuePair<int, double> kvp in angleDB)
             {
                 double dbValue = kvp.Value;
-                newMeasurements[kvp.Key] = (dbValue, new Point(0, 0)); // initialze all positions with (0,0)
+                newMeasurements[kvp.Key] = (dbValue, new Point(0, 0));
             }
             this.measurements = newMeasurements;
-            this._UpdateMeasurements(); // update positions
+            this._UpdateMeasurements();
             this.InvalidateVisual();
             return true;
         }

@@ -34,7 +34,6 @@ namespace AntennaReader
         public static RoutedUICommand EqoDistCommand = new RoutedUICommand();
         public static RoutedUICommand EqoDistIncCommand = new RoutedUICommand();
         public static RoutedUICommand EqoDistDecCommand = new RoutedUICommand();
-        public static RoutedUICommand FinishInterpolationCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
 
@@ -61,7 +60,6 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(EqoDistCommand, EqoDistButton_Click));
             CommandBindings.Add(new CommandBinding(EqoDistIncCommand, EqoDistInc_Click));
             CommandBindings.Add(new CommandBinding(EqoDistDecCommand, EqoDistDec_Click));
-            CommandBindings.Add(new CommandBinding(FinishInterpolationCommand, FinishInterpolation_Click));
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
 
@@ -74,16 +72,23 @@ namespace AntennaReader
         /// <summary>
         /// imports measurements from a given diagram into the drawing canvas
         /// </summary>
-        public void ImportDiagramById (int id)
+        public void ImportDiagramById(int id)
         {
             using (AppDbContext db = new AppDbContext())
             {
                 AntennaDiagram? diagram = db.AntennaDiagrams
                     .Include(d => d.Measurements)
+                    .Include(d => d.InterpolatedMeasurements)
                     .FirstOrDefault(d => d.Id == id);
 
+                if (diagram == null)
+                {
+                    MessageBox.Show("Diagram not found in database.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 Dictionary<int, double> measurements = new();
-                foreach (AntennaMeasurement m in diagram.Measurements) 
+                foreach (AntennaMeasurement m in diagram.Measurements)
                 {
                     measurements[m.Angle] = m.DbValue;
                 }
@@ -157,25 +162,28 @@ namespace AntennaReader
         #endregion
 
         #region Click -> Save to Database
-        /// <summery>
+        /// <summary>
         /// Saves the current diagram and its measurements to the SQLite database
-        /// </summery>
+        /// </summary>
         private void SaveDB_Click(object sender, RoutedEventArgs e)
         {
-            // check if diagram has  all 36 measurements
-            if (drawingCanvas.measurements.Count != 36)
-            {                 
-                MessageBox.Show($"Please ensure that all the points have been measured. (missing : {36 - drawingCanvas.measurements.Count})", "Incomplete Measurement", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            if (drawingCanvas.measurements.Count < 2)
+            {
+                MessageBox.Show(
+                    "Please ensure that all the points have been measured.",
+                    "Incomplete Measurement",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Exclamation);
                 return;
             }
 
-            // get Antenna Information
             SaveDialog dlg = new SaveDialog();
             bool? result = dlg.ShowDialog();
             if (result != true)
             {
                 return;
             }
+
             string antennaName = dlg.antennaName;
             string owner = dlg.owner;
             string state = dlg.state;
@@ -183,60 +191,109 @@ namespace AntennaReader
 
             try
             {
+                // rebuild interpolated values from measured points
+                Dictionary<int, double> rawDb = drawingCanvas.measurements
+                    .ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
+
+                Dictionary<int, double> interpolatedValues =
+                    Interpolator.Interpolate(rawDb, drawingCanvas.InterpolationMode);
+
                 using (AppDbContext db = new AppDbContext())
                 {
-                    // 1. check if diagram exists
                     AntennaDiagram? existingDiagram = db.AntennaDiagrams
                         .Include(d => d.Measurements)
+                        .Include(d => d.InterpolatedMeasurements)
                         .FirstOrDefault(d => d.AntennaName.ToLower() == antennaName.ToLower());
+
                     if (existingDiagram != null)
                     {
-                        existingDiagram.AntennaOwner = owner ?? string.Empty; // update owner
-                        existingDiagram.State = state ?? string.Empty; // update state
-                        existingDiagram.City = city ?? string.Empty;   // update city
-                        existingDiagram.CreateDate = DateTime.Now;     // update date
+                        existingDiagram.AntennaOwner = owner ?? string.Empty;
+                        existingDiagram.State = state ?? string.Empty;
+                        existingDiagram.City = city ?? string.Empty;
+                        existingDiagram.CreateDate = DateTime.Now;
+
                         db.AntennaMeasurements.RemoveRange(existingDiagram.Measurements);
+                        db.AntennaInterpolatedMeasurements.RemoveRange(existingDiagram.InterpolatedMeasurements);
+
                         existingDiagram.Measurements.Clear();
+                        existingDiagram.InterpolatedMeasurements.Clear();
+
+                        // save original measured points
                         foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
                         {
-                            AntennaMeasurement m = new AntennaMeasurement(); // new measurement object
-                            m.Angle = kvp.Key;
-                            m.DbValue = kvp.Value.Item1;
-                            m.PosX = kvp.Value.Item2.X;
-                            m.PosY = kvp.Value.Item2.Y;
-                            existingDiagram.Measurements.Add(m);
+                            existingDiagram.Measurements.Add(new AntennaMeasurement
+                            {
+                                Angle = kvp.Key,
+                                DbValue = kvp.Value.Item1
+                            });
                         }
+
+                        // save interpolated values
+                        foreach (KeyValuePair<int, double> kvp in interpolatedValues)
+                        {
+                            existingDiagram.InterpolatedMeasurements.Add(new AntennaInterpolatedMeasurement
+                            {
+                                Angle = kvp.Key,
+                                DbValue = kvp.Value
+                            });
+                        }
+
                         db.SaveChanges();
-                        MessageBox.Show($"Antenna {antennaName} was overwritten in the database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                        MessageBox.Show(
+                            $"Antenna {antennaName} was overwritten in the database.",
+                            "Success",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
                         return;
                     }
 
-                    // 2. save a new diagram 
-                    AntennaDiagram diagram = new AntennaDiagram(); // new diagram object
-                    diagram.AntennaName = antennaName;             // store antenna name
-                    diagram.AntennaOwner = owner ?? string.Empty;  // owner
-                    diagram.State = state ?? string.Empty;         // state
-                    diagram.City = city ?? string.Empty;           // city
-                    diagram.CreateDate = DateTime.Now;
-                    // store measurements from current drawing canvas
-                    diagram.Measurements = new List<AntennaMeasurement>();
+                    AntennaDiagram diagram = new AntennaDiagram
+                    {
+                        AntennaName = antennaName,
+                        AntennaOwner = owner ?? string.Empty,
+                        State = state ?? string.Empty,
+                        City = city ?? string.Empty,
+                        CreateDate = DateTime.Now
+                    };
+
+                    // save original measured points
                     foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
                     {
-                        AntennaMeasurement m = new AntennaMeasurement(); // new measurement object
-                        m.Angle = kvp.Key;
-                        m.DbValue = kvp.Value.Item1;
-                        m.PosX = kvp.Value.Item2.X;
-                        m.PosY = kvp.Value.Item2.Y;
-                        diagram.Measurements.Add(m);
+                        diagram.Measurements.Add(new AntennaMeasurement
+                        {
+                            Angle = kvp.Key,
+                            DbValue = kvp.Value.Item1
+                        });
                     }
-                    db.AntennaDiagrams.Add(diagram); // add diagram to database
+
+                    // save interpolated values
+                    foreach (KeyValuePair<int, double> kvp in interpolatedValues)
+                    {
+                        diagram.InterpolatedMeasurements.Add(new AntennaInterpolatedMeasurement
+                        {
+                            Angle = kvp.Key,
+                            DbValue = kvp.Value
+                        });
+                    }
+
+                    db.AntennaDiagrams.Add(diagram);
                     db.SaveChanges();
                 }
-                MessageBox.Show($"Antenna {antennaName} has been saved to the database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                MessageBox.Show(
+                    $"Antenna {antennaName} has been saved to the database.",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving to database: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    $"Error saving to database: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
         #endregion
@@ -310,22 +367,6 @@ namespace AntennaReader
             {
                 drawingCanvas.InterpolationMode = mode;
             }
-        }
-        #endregion
-
-        #region Click -> Finish Interpolation
-        /// <summary>
-        /// Bakes the current interpolation into all 36 clickable points
-        /// so the user can fine-tune each angle individually.
-        /// </summary>
-        private void FinishInterpolation_Click(object sender, RoutedEventArgs e)
-        {
-            if (drawingCanvas.measurements.Count < 2)
-            {
-                MessageBox.Show("Please click at least 2 points first!", "Not enough points", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                return;
-            }
-            drawingCanvas.BakeInterpolation();
         }
         #endregion
 

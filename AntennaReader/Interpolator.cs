@@ -10,82 +10,63 @@ namespace AntennaReader
         CatmullRom,
         Monotone,
         Lagrange,
-        BSpline
     }
 
-    public static class SplineInterpolator
+    public static class Interpolator
     {
-        // ─────────────────────────────────────────────────────────────
-        // PUBLIC ENTRY POINT
-        //
-        // Takes only the clicked points (any number, any angles).
-        // Returns a dense dictionary with one dB entry per integer degree,
-        // BUT only for degrees that fall BETWEEN consecutive clicked points.
-        // Gaps (ranges with no clicked points on both sides) are left empty.
-        //
-        // Example: clicked 0, 10, 100, 120
-        //   → fills degrees 0..10, 10..100, 100..120
-        //   → degrees 120..359 are absent (gap)
-        // ─────────────────────────────────────────────────────────────
-
-        public static Dictionary<int, double> Interpolate(
-            Dictionary<int, double> measurements,
-            InterpolationMode mode)
-        {
-            if (measurements == null || measurements.Count == 0)
-                return new Dictionary<int, double>();
-
-            // need at least 2 points to draw anything
-            if (measurements.Count < 2)
-                return new Dictionary<int, double>();
-
-            List<(double t, double v)> pts = measurements
-                .OrderBy(kv => kv.Key)
-                .Select(kv => ((double)kv.Key, kv.Value))
-                .ToList();
-
-            return mode switch
-            {
-                InterpolationMode.Linear => InterpolateLinear(pts),
-                InterpolationMode.CatmullRom => InterpolateCatmullRom(pts),
-                InterpolationMode.Monotone => InterpolateMonotone(pts),
-                InterpolationMode.Lagrange => InterpolateLagrange(pts),
-                InterpolationMode.BSpline => InterpolateBSpline(pts),
-
-
-                _ => InterpolateLinear(pts)
-            };
-        }
-
+        #region interpolate
         /// <summary>
-        /// Same as Interpolate but treats the data as a closed loop —
-        /// connects the last point back to the first to fill the gap.
-        /// Used only for baking the final result.
+        /// Takes raw clicked points and fills in the gaps between them with
+        /// interpolated values, one per integer degree across the full 360°.
+        /// Connects the last point back to the first to close the loop.
+        /// Needs at least 2 points to do anything.
         /// </summary>
-        public static Dictionary<int, double> InterpolateClosedLoop(
-            Dictionary<int, double> measurements,
-            InterpolationMode mode)
+        public static Dictionary<int, double> Interpolate(
+    Dictionary<int, double> rawClickedPoints,
+    InterpolationMode mode)
         {
-            if (measurements == null || measurements.Count < 2)
+            if (rawClickedPoints == null || rawClickedPoints.Count < 2)
                 return new Dictionary<int, double>();
 
-            // append the first point again at angle + 360 to close the loop
-            Dictionary<int, double> closed = new Dictionary<int, double>(measurements);
-            int firstAngle = measurements.Keys.Min();
-            int lastAngle = measurements.Keys.Max();
+            // 1. sort the angles
+            List<int> sortedAngles = rawClickedPoints.Keys.OrderBy(k => k).ToList();
+            int n = sortedAngles.Count;
 
-            // add wrap-around point only if not already a full 360
-            if (firstAngle != 0 || lastAngle != 350 || measurements.Count != 36)
+            // 2. find the biggest gap
+            int biggestGapIndex = 0;
+            int biggestGapSize = 0;
+            for (int i = 0; i < n; i++)
             {
-                closed[360] = measurements[firstAngle];
+                int current = sortedAngles[i];
+                int next = sortedAngles[(i + 1) % n];
+                int gap = (next - current + 360) % 360;
+                if (gap > biggestGapSize)
+                {
+                    biggestGapSize = gap;
+                    biggestGapIndex = i;
+                }
             }
 
-            List<(double t, double v)> pts = closed
-                .OrderBy(kv => kv.Key)
-                .Select(kv => ((double)kv.Key, kv.Value))
-                .ToList();
+            // 3. reorder: start from the point AFTER the biggest gap
+            //    and add 360 to any angle that would go below the starting angle
+            int startIdx = (biggestGapIndex + 1) % n;
+            List<(double t, double v)> pts = new List<(double t, double v)>();
+            int baseAngle = sortedAngles[startIdx];
 
-            // run chosen method — result will cover 0..359 fully
+            for (int i = 0; i < n; i++)
+            {
+                int idx = (startIdx + i) % n;
+                int angle = sortedAngles[idx];
+                // if angle is less than base, it wrapped around, so add 360
+                if (angle < baseAngle)
+                    angle += 360;
+                pts.Add((angle, rawClickedPoints[sortedAngles[idx]]));
+            }
+
+            // 4. close the loop: add first point again at +360
+            pts.Add((pts[0].t + 360, pts[0].v));
+
+            // 5. interpolate
             var result = mode switch
             {
                 InterpolationMode.Linear => InterpolateLinear(pts),
@@ -95,24 +76,29 @@ namespace AntennaReader
                 _ => InterpolateLinear(pts)
             };
 
-            // clamp all results to valid degree range 0..359
-            return result
-                .Where(kv => kv.Key >= 0 && kv.Key <= 359)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            // 6. map everything back to 0-359
+            Dictionary<int, double> final = new Dictionary<int, double>();
+            foreach (var kv in result)
+            {
+                int deg = ((kv.Key % 360) + 360) % 360;
+                final[deg] = Math.Clamp(kv.Value, 0.0, 30.0);
+            }
+
+            return final;
         }
+        #endregion
 
-        // ─────────────────────────────────────────────────────────────
-        // LINEAR
-        // Straight line between each pair of consecutive clicked points.
-        // ─────────────────────────────────────────────────────────────
+        #region Linear
 
+        /// <summary>
+        /// Draws a straight line between each pair of points.
+        /// Simple as it gets — just connect the dots.
+        /// </summary>
         private static Dictionary<int, double> InterpolateLinear(List<(double t, double v)> pts)
         {
             var result = new Dictionary<int, double>();
             int n = pts.Count;
 
-            // only iterate over the n-1 segments between consecutive clicked points
-            // do NOT wrap around from last to first (that would fill the gap)
             for (int i = 0; i < n - 1; i++)
             {
                 double t0 = pts[i].t;
@@ -131,44 +117,38 @@ namespace AntennaReader
             return result;
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // CATMULL-ROM  (Cubic Hermite with centripetal tangents)
-        //
-        // Tangent at point i:
-        //   m[i] = (v[i+1] - v[i-1]) / 2
-        //
-        // For endpoints (no neighbor on one side) tangent = 0
-        // → mathematically produces a straight line for that segment.
-        //
-        // Cubic Hermite basis on local u in [0, 1]:
-        //   h00 =  2u^3 - 3u^2 + 1
-        //   h10 =   u^3 - 2u^2 + u
-        //   h01 = -2u^3 + 3u^2
-        //   h11 =   u^3 -  u^2
-        //
-        //   p(u) = h00*p0 + h10*(m0*span) + h01*p1 + h11*(m1*span)
-        // ─────────────────────────────────────────────────────────────
+        #endregion
 
+        #region Catmull-Rom
+
+        /// <summary>
+        /// Smooth curve that passes through every point.
+        /// Uses the slope between the previous and next point as
+        /// the tangent at each point, so the curve flows nicely.
+        /// Endpoints get a flat tangent (slope = 0) since they
+        /// have no neighbor on one side.
+        ///
+        /// The math uses four blending functions (h00, h10, h01, h11)
+        /// to mix the two endpoint values and their tangents together.
+        /// </summary>
         private static Dictionary<int, double> InterpolateCatmullRom(List<(double t, double v)> pts)
         {
             var result = new Dictionary<int, double>();
             int n = pts.Count;
 
-            // compute tangents — endpoints get 0 (no neighbor = straight line)
             double[] m = new double[n];
             for (int i = 0; i < n; i++)
             {
                 if (i == 0 || i == n - 1)
                 {
-                    m[i] = 0.0; // endpoint: tangent = 0 → straight line for that segment
+                    m[i] = 0.0;
                 }
                 else
                 {
-                    m[i] = (pts[i + 1].v - pts[i - 1].v) / 2.0; // interior tangent
+                    m[i] = (pts[i + 1].v - pts[i - 1].v) / 2.0;
                 }
             }
 
-            // evaluate each segment between consecutive clicked points only
             for (int i = 0; i < n - 1; i++)
             {
                 double t0 = pts[i].t;
@@ -197,29 +177,25 @@ namespace AntennaReader
             return result;
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // MONOTONE CUBIC  (Fritsch-Carlson)
-        //
-        // Same as Catmull-Rom but tangents are constrained so the curve
-        // never overshoots between two adjacent points.
-        // Perfect for antenna patterns: nulls stay nulls, lobes don't spike.
-        //
-        // Step 1: secant slopes  d[i] = (v[i+1] - v[i]) / span[i]
-        // Step 2: initial tangents same as Catmull-Rom (0 at endpoints)
-        // Step 3: Fritsch-Carlson constraint
-        //   if d[i] == 0 → m[i] = m[i+1] = 0  (flat segment stays flat)
-        //   else:
-        //     alpha = m[i]   / d[i]
-        //     beta  = m[i+1] / d[i]
-        //     if alpha^2 + beta^2 > 9 → scale down both tangents
-        // ─────────────────────────────────────────────────────────────
+        #endregion
 
+        #region Monotone (Fritsch-Carlson)
+
+        /// <summary>
+        /// Like Catmull-Rom but prevents overshooting.
+        /// If the data goes up then down, this method won't let the
+        /// curve shoot past the peak. It does this by checking each
+        /// segment — if the tangents would cause the curve to wiggle
+        /// or overshoot, it scales them down to keep things tame.
+        ///
+        /// Flat segments (same value on both ends) get zero tangents
+        /// so the curve stays perfectly flat there.
+        /// </summary>
         private static Dictionary<int, double> InterpolateMonotone(List<(double t, double v)> pts)
         {
             var result = new Dictionary<int, double>();
             int n = pts.Count;
 
-            // step 1: secant slopes and spans
             double[] d = new double[n - 1];
             double[] span = new double[n - 1];
             for (int i = 0; i < n - 1; i++)
@@ -228,19 +204,16 @@ namespace AntennaReader
                 d[i] = span[i] < 1e-9 ? 0.0 : (pts[i + 1].v - pts[i].v) / span[i];
             }
 
-            // step 2: initial tangents (0 at endpoints)
             double[] m = new double[n];
             m[0] = 0.0;
             m[n - 1] = 0.0;
             for (int i = 1; i < n - 1; i++)
                 m[i] = (pts[i + 1].v - pts[i - 1].v) / 2.0;
 
-            // step 3: Fritsch-Carlson monotonicity constraint per segment
             for (int i = 0; i < n - 1; i++)
             {
                 if (Math.Abs(d[i]) < 1e-9)
                 {
-                    // flat segment → force both endpoint tangents to zero
                     m[i] = 0.0;
                     m[i + 1] = 0.0;
                     continue;
@@ -258,7 +231,6 @@ namespace AntennaReader
                 }
             }
 
-            // evaluate segments — identical to Catmull-Rom from here
             for (int i = 0; i < n - 1; i++)
             {
                 double t0 = pts[i].t;
@@ -287,15 +259,20 @@ namespace AntennaReader
             return result;
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // LAGRANGE
-        //
-        // Ln,i(t) = prod_{j=0, j!=i}^{n}  (t - t_j) / (t_i - t_j)
-        // f(t)    = sum_{i=0}^{n}  v_i * Ln,i(t)
-        //
-        // Only evaluated within the range of clicked points (no extrapolation).
-        // ─────────────────────────────────────────────────────────────
+        #endregion
 
+        #region Lagrange
+
+        /// <summary>
+        /// Uses ALL points at once to build one big polynomial that
+        /// passes through every single point. Smooth but can go crazy
+        /// (huge spikes) if you have lots of points — that's just how
+        /// high-degree polynomials work. Best with a small number of points.
+        ///
+        /// For each degree, it calculates a weighted blend of all point
+        /// values, where the weights (basis polynomials) are set up so
+        /// the curve hits each point exactly.
+        /// </summary>
         private static Dictionary<int, double> InterpolateLagrange(List<(double t, double v)> pts)
         {
             var result = new Dictionary<int, double>();
@@ -304,7 +281,6 @@ namespace AntennaReader
             double tMin = pts[0].t;
             double tMax = pts[n - 1].t;
 
-            // only fill degrees within the clicked range
             for (int deg = (int)tMin; deg <= (int)tMax; deg++)
             {
                 double tQuery = deg;
@@ -312,13 +288,12 @@ namespace AntennaReader
 
                 for (int i = 0; i < n; i++)
                 {
-                    // compute L_{n,i}(t)
                     double Li = 1.0;
                     for (int j = 0; j < n; j++)
                     {
                         if (j == i) continue;
-                        double num = tQuery - pts[j].t; // (t   - t_j)
-                        double den = pts[i].t - pts[j].t; // (t_i - t_j)
+                        double num = tQuery - pts[j].t;
+                        double den = pts[i].t - pts[j].t;
                         if (Math.Abs(den) < 1e-9) { Li = 0.0; break; }
                         Li *= num / den;
                     }
@@ -328,53 +303,8 @@ namespace AntennaReader
                 result[deg] = sum;
             }
             return result;
-
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // B-SPLINE (uniform cubic, Cox-de Boor)
-        //
-        // Approximating — does NOT pass through clicked points.
-        // Smoother than Bezier, global influence of control points.
-        // ─────────────────────────────────────────────────────────────
-
-        private static Dictionary<int, double> InterpolateBSpline(List<(double t, double v)> pts)
-        {
-            var result = new Dictionary<int, double>();
-            int n = pts.Count;
-
-            if (n < 2) return result;
-
-            // for each segment between consecutive clicked points
-            for (int i = 0; i < n - 1; i++)
-            {
-                double t0 = pts[i].t;
-                double t1 = pts[i + 1].t;
-                double span = t1 - t0;
-
-                // gather 4 control points (clamp at boundaries)
-                double p0 = pts[Math.Max(i - 1, 0)].v;
-                double p1 = pts[i].v;
-                double p2 = pts[i + 1].v;
-                double p3 = pts[Math.Min(i + 2, n - 1)].v;
-
-                for (int deg = (int)t0; deg <= (int)t1; deg++)
-                {
-                    double u = span < 1e-9 ? 0.0 : (deg - t0) / span;
-                    double u2 = u * u;
-                    double u3 = u2 * u;
-
-                    // uniform cubic B-spline basis (Cox-de Boor)
-                    double b0 = (-u3 + 3 * u2 - 3 * u + 1) / 6.0;
-                    double b1 = (3 * u3 - 6 * u2 + 4) / 6.0;
-                    double b2 = (-3 * u3 + 3 * u2 + 3 * u + 1) / 6.0;
-                    double b3 = u3 / 6.0;
-
-                    result[deg] = b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3;
-                }
-            }
-
-            return result;
-        }
+        #endregion
     }
 }

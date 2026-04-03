@@ -196,66 +196,68 @@ namespace AntennaReader
         /// </summary>
         private void ExportCSV_Click(object sender, RoutedEventArgs e)
         {
-            List<AntennaDiagram> selectedDiagrams = GetSelectedDiagrams(); // get selected diagrams
-            // check if list is empty
+            List<AntennaDiagram> selectedDiagrams = GetSelectedDiagrams();
             if (!selectedDiagrams.Any())
             {
                 MessageBox.Show("Please select at least one diagram to export", "No selection", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
             }
-            // set file path
-            string filePath = System.IO.Path.Combine(AppPaths.ExportFolder, $"AntennaDiagrams.csv");
+
+            string filePath = System.IO.Path.Combine(AppPaths.ExportFolder, "AntennaDiagrams.csv");
 
             try
             {
                 using (AppDbContext db = new AppDbContext())
+                using (StreamWriter writer = new StreamWriter(filePath))
                 {
-                    using (StreamWriter writer = new StreamWriter(filePath))
+                    // header
+                    List<string> header = new List<string> { "Antenna Name" };
+                    for (int angle = 0; angle < 360; angle++)
                     {
-                        //1. header
-                        List<string> header = new List<string>();
-                        header.Add("Antenna Name");
-                        for (int angle = 0; angle < 360; angle += 10)
+                        header.Add($"Angle {angle}");
+                    }
+                    writer.WriteLine(string.Join(",", header));
+
+                    // rows
+                    foreach (AntennaDiagram diagram in selectedDiagrams)
+                    {
+                        AntennaDiagram result = db.AntennaDiagrams
+                            .Include(d => d.InterpolatedMeasurements)
+                            .First(d => d.Id == diagram.Id);
+
+                        List<string> row = new List<string> { result.AntennaName ?? string.Empty };
+
+                        for (int angle = 0; angle < 360; angle++)
                         {
-                            header.Add($"Angle {angle}");
+                            AntennaInterpolatedMeasurement? measurement =
+                                result.InterpolatedMeasurements.FirstOrDefault(m => m.Angle == angle);
+
+                            double dbValue = measurement?.DbValue ?? 0.0;
+                            row.Add($"{dbValue:F1}");
                         }
-                        writer.WriteLine(string.Join(",", header));
-                        //2. data rows
-                        foreach (AntennaDiagram diagram in selectedDiagrams)
-                        {
-                            // query database for diagram and its measurements
-                            AntennaDiagram result = db.AntennaDiagrams.Include(d => d.Measurements).First(d => d.Id == diagram.Id);
-                            // measurements 
-                            List<string> row = new List<string> { result.AntennaName ?? string.Empty };
-                            for (int angle = 0; angle < 360; angle += 10)
-                            {
-                                AntennaMeasurement? measurment = result.Measurements.FirstOrDefault(m => m.Angle == angle);
-                                double dbValue = measurment?.DbValue ?? 0.0;
-                                row.Add($"{dbValue:F1}");
-                            }
-                            writer.WriteLine(string.Join(",", row));
-                        }
+
+                        writer.WriteLine(string.Join(",", row));
                     }
                 }
+
                 MessageBox.Show($"Exported {selectedDiagrams.Count} diagram(s) to CSV \n{AppPaths.ExportFolder}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 OpenExportFolder();
-
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to export diagram(s) to CSV: {ex.Message}", "Success", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Failed to export diagram(s) to CSV: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         #endregion
 
         #region Click -> Export PAT
         /// <summary>
-        /// exports selected antenna diagrams from the database browser window to seperate PAT file(s).
+        /// exports selected antenna diagrams from the database browser window to separate PAT file(s).
         /// </summary>
         private void ExportPAT_Click(object sender, RoutedEventArgs e)
         {
             List<AntennaDiagram> selectedDiagrams = GetSelectedDiagrams();
-            // check if list is empty
+
             if (!selectedDiagrams.Any())
             {
                 MessageBox.Show("Please select at least one diagram to export.", "No selection", MessageBoxButton.OK, MessageBoxImage.Exclamation);
@@ -268,26 +270,33 @@ namespace AntennaReader
                 {
                     foreach (AntennaDiagram diagram in selectedDiagrams)
                     {
-                        AntennaDiagram result = db.AntennaDiagrams.Include(d => d.Measurements).First(d => d.Id == diagram.Id);
+                        AntennaDiagram result = db.AntennaDiagrams
+                            .Include(d => d.InterpolatedMeasurements)
+                            .First(d => d.Id == diagram.Id);
+
                         string filename = SafeFileName(result.AntennaName);
                         string filePath = System.IO.Path.Combine(AppPaths.ExportFolder, $"{filename}.PAT");
-                        // write PAT file
+
                         using (StreamWriter writer = new StreamWriter(filePath))
                         {
-                            writer.WriteLine("'', 0, 2"); // -> I assume these are fixed values (PAT files start with these)
-                            for (int angle = 0; angle < 360; angle += 10) // write measurements
+                            writer.WriteLine("'', 0, 2");
+
+                            for (int angle = 0; angle < 360; angle++)
                             {
-                                AntennaMeasurement? measurment = result.Measurements.FirstOrDefault(m => m.Angle == angle);
-                                double dbValue = measurment?.DbValue ?? 0.0;
+                                AntennaInterpolatedMeasurement? measurement =
+                                    result.InterpolatedMeasurements.FirstOrDefault(m => m.Angle == angle);
+
+                                double dbValue = measurement?.DbValue ?? 0.0;
                                 writer.WriteLine($" {angle}, {dbValue:F1}");
                             }
-                            writer.WriteLine("999"); // ending for PAT file
+
+                            writer.WriteLine("999");
                         }
                     }
                 }
+
                 MessageBox.Show($"Exported {selectedDiagrams.Count} PAT file(s) to \n{AppPaths.ExportFolder}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 OpenExportFolder();
-
             }
             catch (Exception ex)
             {
