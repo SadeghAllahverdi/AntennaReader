@@ -73,10 +73,12 @@
                     </MenuItem>
 
                     <MenuItem Header="Interpolation Mode">
+                        <MenuItem Header="Periodic Cubic Spline" Click="InterpMode_Click" Tag="PeriodicCubicSpline"/>
+                        <MenuItem Header="Linear" Click="InterpMode_Click" Tag="Linear"/>
                         <MenuItem Header="Monotone" Click="InterpMode_Click" Tag="Monotone"/>
-                        <MenuItem Header="Linear"      Click="InterpMode_Click" Tag="Linear"/>
-                        <MenuItem Header="Catmull-Rom" Click="InterpMode_Click" Tag="CatmullRom"/>
-                        <MenuItem Header="Lagrange"    Click="InterpMode_Click" Tag="Lagrange"/>
+                        
+                        <!-- <MenuItem Header="Catmull-Rom" Click="InterpMode_Click" Tag="CatmullRom"/>-->
+                        <!--<MenuItem Header="Lagrange"    Click="InterpMode_Click" Tag="Lagrange"/>-->
                     </MenuItem>
 
                     <MenuItem Header="Actions">

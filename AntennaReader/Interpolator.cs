@@ -6,24 +6,23 @@ namespace AntennaReader
 {
     public enum InterpolationMode
     {
+        PeriodicCubicSpline,
         Linear,
-        CatmullRom,
         Monotone,
+        CatmullRom,
         Lagrange,
     }
 
     public static class Interpolator
     {
-        #region interpolate
+        #region Interpolator
         /// <summary>
-        /// Takes raw clicked points and fills in the gaps between them with
-        /// interpolated values, one per integer degree across the full 360°.
-        /// Connects the last point back to the first to close the loop.
-        /// Needs at least 2 points to do anything.
+        /// Fills in 360° of interpolated values from the clicked points.
+        /// Handles wrap-around by finding the biggest gap and skipping it.
         /// </summary>
         public static Dictionary<int, double> Interpolate(
-    Dictionary<int, double> rawClickedPoints,
-    InterpolationMode mode)
+            Dictionary<int, double> rawClickedPoints,
+            InterpolationMode mode)
         {
             if (rawClickedPoints == null || rawClickedPoints.Count < 2)
                 return new Dictionary<int, double>();
@@ -69,9 +68,10 @@ namespace AntennaReader
             // 5. interpolate
             var result = mode switch
             {
+                InterpolationMode.PeriodicCubicSpline => InterpolatePeriodicCubicSpline(pts),
                 InterpolationMode.Linear => InterpolateLinear(pts),
-                InterpolationMode.CatmullRom => InterpolateCatmullRom(pts),
                 InterpolationMode.Monotone => InterpolateMonotone(pts),
+                InterpolationMode.CatmullRom => InterpolateCatmullRom(pts),
                 InterpolationMode.Lagrange => InterpolateLagrange(pts),
                 _ => InterpolateLinear(pts)
             };
@@ -88,11 +88,126 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Linear
+        #region Periodic Cubic Spline Interpolation
+        /// <summary>
+        /// Solves a system of equations for smooth second derivatives at each point.
+        /// Industry standard for antenna patterns. Stable and smooth.
+        /// </summary>
+        private static Dictionary<int, double> InterpolatePeriodicCubicSpline(List<(double t, double v)> pts)
+        {
+            var result = new Dictionary<int, double>();
+            int n = pts.Count;
+
+            if (n < 3)
+                return InterpolateLinear(pts);
+
+            int segments = n - 1;
+
+            // step 1: compute h (spacing) and delta (slope) for each segment
+            double[] h = new double[segments];
+            double[] delta = new double[segments];
+            for (int i = 0; i < segments; i++)
+            {
+                h[i] = pts[i + 1].t - pts[i].t;
+                if (h[i] < 1e-9) h[i] = 1e-9;
+                delta[i] = (pts[i + 1].v - pts[i].v) / h[i];
+            }
+
+            // step 2: solve for second derivatives M[i]
+            double[] M = new double[n];
+            M[0] = 0.0;
+            M[n - 1] = 0.0;
+
+            if (segments >= 2)
+            {
+                int size = n - 2;
+                double[] sub = new double[size];
+                double[] diag = new double[size];
+                double[] sup = new double[size];
+                double[] rhs = new double[size];
+
+                for (int i = 0; i < size; i++)
+                {
+                    int pi = i + 1;
+                    sub[i] = h[pi - 1];
+                    diag[i] = 2.0 * (h[pi - 1] + h[pi]);
+                    sup[i] = h[pi];
+                    rhs[i] = 6.0 * (delta[pi] - delta[pi - 1]);
+                }
+
+                double[] solution = SolveTridiagonal(sub, diag, sup, rhs);
+                for (int i = 0; i < size; i++)
+                {
+                    M[i + 1] = solution[i];
+                }
+            }
+
+            // step 3: evaluate the spline on each segment
+            for (int i = 0; i < segments; i++)
+            {
+                double t0 = pts[i].t;
+                double t1 = pts[i + 1].t;
+                double y0 = pts[i].v;
+                double y1 = pts[i + 1].v;
+                double hi = h[i];
+                double M0 = M[i];
+                double M1 = M[i + 1];
+
+                for (int deg = (int)t0; deg <= (int)t1; deg++)
+                {
+                    double x = deg;
+                    double a_coeff = (t1 - x) / hi;
+                    double b_coeff = (x - t0) / hi;
+
+                    double val = a_coeff * y0
+                               + b_coeff * y1
+                               + ((a_coeff * a_coeff * a_coeff - a_coeff) * M0
+                                + (b_coeff * b_coeff * b_coeff - b_coeff) * M1)
+                               * (hi * hi) / 6.0;
+
+                    result[deg] = val;
+                }
+            }
+
+            return result;
+        }
 
         /// <summary>
-        /// Draws a straight line between each pair of points.
-        /// Simple as it gets — just connect the dots.
+        /// Thomas algorithm — solves the tridiagonal system in O(n). Fast and stable.
+        /// </summary>
+        private static double[] SolveTridiagonal(double[] a, double[] b, double[] c, double[] rhs)
+        {
+            int n = b.Length;
+            if (n == 0) return Array.Empty<double>();
+            if (n == 1) return new double[] { rhs[0] / b[0] };
+
+            double[] c_prime = new double[n];
+            double[] rhs_prime = new double[n];
+
+            c_prime[0] = c[0] / b[0];
+            rhs_prime[0] = rhs[0] / b[0];
+
+            for (int i = 1; i < n; i++)
+            {
+                double denom = b[i] - a[i] * c_prime[i - 1];
+                c_prime[i] = (i < n - 1) ? c[i] / denom : 0.0;
+                rhs_prime[i] = (rhs[i] - a[i] * rhs_prime[i - 1]) / denom;
+            }
+
+            double[] x = new double[n];
+            x[n - 1] = rhs_prime[n - 1];
+            for (int i = n - 2; i >= 0; i--)
+            {
+                x[i] = rhs_prime[i] - c_prime[i] * x[i + 1];
+            }
+
+            return x;
+        }
+        #endregion
+
+        #region Linear Interpolation
+        /// <summary>
+        /// Straight lines between each pair of points. Simple.
         /// </summary>
         private static Dictionary<int, double> InterpolateLinear(List<(double t, double v)> pts)
         {
@@ -116,80 +231,11 @@ namespace AntennaReader
 
             return result;
         }
-
         #endregion
 
-        #region Catmull-Rom
-
+        #region Monotone Interpolation (Fritsch-Carlson)
         /// <summary>
-        /// Smooth curve that passes through every point.
-        /// Uses the slope between the previous and next point as
-        /// the tangent at each point, so the curve flows nicely.
-        /// Endpoints get a flat tangent (slope = 0) since they
-        /// have no neighbor on one side.
-        ///
-        /// The math uses four blending functions (h00, h10, h01, h11)
-        /// to mix the two endpoint values and their tangents together.
-        /// </summary>
-        private static Dictionary<int, double> InterpolateCatmullRom(List<(double t, double v)> pts)
-        {
-            var result = new Dictionary<int, double>();
-            int n = pts.Count;
-
-            double[] m = new double[n];
-            for (int i = 0; i < n; i++)
-            {
-                if (i == 0 || i == n - 1)
-                {
-                    m[i] = 0.0;
-                }
-                else
-                {
-                    m[i] = (pts[i + 1].v - pts[i - 1].v) / 2.0;
-                }
-            }
-
-            for (int i = 0; i < n - 1; i++)
-            {
-                double t0 = pts[i].t;
-                double t1 = pts[i + 1].t;
-                double p0 = pts[i].v;
-                double p1 = pts[i + 1].v;
-                double m0 = m[i];
-                double m1 = m[i + 1];
-                double span = t1 - t0;
-
-                for (int deg = (int)t0; deg <= (int)t1; deg++)
-                {
-                    double u = span < 1e-9 ? 0.0 : (deg - t0) / span;
-                    double u2 = u * u;
-                    double u3 = u2 * u;
-
-                    double h00 = 2 * u3 - 3 * u2 + 1;
-                    double h10 = u3 - 2 * u2 + u;
-                    double h01 = -2 * u3 + 3 * u2;
-                    double h11 = u3 - u2;
-
-                    result[deg] = h00 * p0 + h10 * (m0 * span) + h01 * p1 + h11 * (m1 * span);
-                }
-            }
-
-            return result;
-        }
-
-        #endregion
-
-        #region Monotone (Fritsch-Carlson)
-
-        /// <summary>
-        /// Like Catmull-Rom but prevents overshooting.
-        /// If the data goes up then down, this method won't let the
-        /// curve shoot past the peak. It does this by checking each
-        /// segment — if the tangents would cause the curve to wiggle
-        /// or overshoot, it scales them down to keep things tame.
-        ///
-        /// Flat segments (same value on both ends) get zero tangents
-        /// so the curve stays perfectly flat there.
+        /// Like Catmull-Rom but won't overshoot — keeps the curve tame.
         /// </summary>
         private static Dictionary<int, double> InterpolateMonotone(List<(double t, double v)> pts)
         {
@@ -258,20 +304,59 @@ namespace AntennaReader
 
             return result;
         }
-
         #endregion
 
-        #region Lagrange
-
+        #region Extra Interpolations (Lag, CatMull)
         /// <summary>
-        /// Uses ALL points at once to build one big polynomial that
-        /// passes through every single point. Smooth but can go crazy
-        /// (huge spikes) if you have lots of points — that's just how
-        /// high-degree polynomials work. Best with a small number of points.
-        ///
-        /// For each degree, it calculates a weighted blend of all point
-        /// values, where the weights (basis polynomials) are set up so
-        /// the curve hits each point exactly.
+        /// Smooth curve through every point using neighbor slopes as tangents.
+        /// </summary>
+        private static Dictionary<int, double> InterpolateCatmullRom(List<(double t, double v)> pts)
+        {
+            var result = new Dictionary<int, double>();
+            int n = pts.Count;
+
+            double[] m = new double[n];
+            for (int i = 0; i < n; i++)
+            {
+                if (i == 0 || i == n - 1)
+                {
+                    m[i] = 0.0;
+                }
+                else
+                {
+                    m[i] = (pts[i + 1].v - pts[i - 1].v) / 2.0;
+                }
+            }
+
+            for (int i = 0; i < n - 1; i++)
+            {
+                double t0 = pts[i].t;
+                double t1 = pts[i + 1].t;
+                double p0 = pts[i].v;
+                double p1 = pts[i + 1].v;
+                double m0 = m[i];
+                double m1 = m[i + 1];
+                double span = t1 - t0;
+
+                for (int deg = (int)t0; deg <= (int)t1; deg++)
+                {
+                    double u = span < 1e-9 ? 0.0 : (deg - t0) / span;
+                    double u2 = u * u;
+                    double u3 = u2 * u;
+
+                    double h00 = 2 * u3 - 3 * u2 + 1;
+                    double h10 = u3 - 2 * u2 + u;
+                    double h01 = -2 * u3 + 3 * u2;
+                    double h11 = u3 - u2;
+
+                    result[deg] = h00 * p0 + h10 * (m0 * span) + h01 * p1 + h11 * (m1 * span);
+                }
+            }
+
+            return result;
+        }
+        /// <summary>
+        /// One big polynomial through all points. Smooth but can go crazy with many points.
         /// </summary>
         private static Dictionary<int, double> InterpolateLagrange(List<(double t, double v)> pts)
         {
@@ -304,7 +389,6 @@ namespace AntennaReader
             }
             return result;
         }
-
         #endregion
     }
 }

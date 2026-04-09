@@ -47,9 +47,9 @@ namespace AntennaReader
 
         public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
         public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
-        private const int maxUndoRedoSteps = 30; // maximum undo-redo steps
+        private const int maxUndoRedoSteps = 60; // maximum undo-redo steps
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store measurements
-        private InterpolationMode _interpolationMode = InterpolationMode.Monotone;
+        private InterpolationMode _interpolationMode = InterpolationMode.PeriodicCubicSpline;
         private Dictionary<int, double> _interpolatedMeasurements = new Dictionary<int, double>();
         public InterpolationMode InterpolationMode
         {
