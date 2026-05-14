@@ -45,6 +45,9 @@ namespace AntennaReader
         private bool _isPerformingUndoRedo = false; // are we doing undo-redo?
         public bool HasDiagram => this._startPoint != null && this._endPoint != null;
 
+        private double _eqoDistOffset = 0.0;
+
+
         public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
         public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
         private const int maxUndoRedoSteps = 30; // maximum undo-redo steps
@@ -488,7 +491,7 @@ namespace AntennaReader
 
                 for (int i = 0; i < sortedDegrees.Count; i++)
                 {
-                    dc.DrawLine(new Pen(Brushes.Orange, 3),
+                    dc.DrawLine(new Pen(Brushes.Orange, 1),
                         DegToPoint(sortedDegrees[i]),
                         DegToPoint(sortedDegrees[(i + 1) % sortedDegrees.Count]));
                 }
@@ -506,7 +509,7 @@ namespace AntennaReader
             distance = Math.Clamp(distance, 0.0, 1.0);
             if (this._isEqoDistMode)
             {
-                return Math.Clamp((1.0 - distance) * this._eqoDistMaxDb, 0.0, _eqoDistMaxDb);
+                return Math.Clamp((1.0 - distance) * this._eqoDistMaxDb, 0.0, _eqoDistMaxDb) + this._eqoDistOffset; ;
             }
             return Math.Clamp(-20.0 * Math.Log10(Math.Max(distance, 1e-6)), 0.0, 30.0);
         }

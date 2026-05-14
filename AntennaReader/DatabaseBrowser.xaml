@@ -14,16 +14,16 @@
 
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <TextBox x:Name="SearchBar"
-             Height="28"
-             Padding="6,0,6,0"
-             TextChanged="SearchBar_TextChanged"/>
+                     Height="28"
+                     Padding="6,0,6,0"
+                     TextChanged="SearchBar_TextChanged"/>
 
             <TextBlock Text="Search (e.g. Antenna Name / State / City )"
-               Margin="10,0,0,0"
-               VerticalAlignment="Center"
-               Foreground="Gray"
-               FontStyle="Italic"
-               IsHitTestVisible="False">
+                       Margin="10,0,0,0"
+                       VerticalAlignment="Center"
+                       Foreground="Gray"
+                       FontStyle="Italic"
+                       IsHitTestVisible="False">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed"/>

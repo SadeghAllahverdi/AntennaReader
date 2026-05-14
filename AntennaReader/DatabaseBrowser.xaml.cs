@@ -222,18 +222,19 @@ namespace AntennaReader
                     foreach (AntennaDiagram diagram in selectedDiagrams)
                     {
                         AntennaDiagram result = db.AntennaDiagrams
-                            .Include(d => d.InterpolatedMeasurements)
+                            .Include(d => d.Measurements)
                             .First(d => d.Id == diagram.Id);
+
+                        Dictionary<int, double> raw = result.Measurements
+                            .ToDictionary(m => m.Angle, m => m.DbValue);
+                        Dictionary<int, double> dense = Interpolator.Interpolate(raw, InterpolationMode.Monotone);
 
                         List<string> row = new List<string> { result.AntennaName ?? string.Empty };
 
                         for (int angle = 0; angle < 360; angle++)
                         {
-                            AntennaInterpolatedMeasurement? measurement =
-                                result.InterpolatedMeasurements.FirstOrDefault(m => m.Angle == angle);
-
-                            double dbValue = measurement?.DbValue ?? 0.0;
-                            row.Add($"{dbValue:F1}");
+                            double dbValue = (dense.TryGetValue(angle, out double v) ? v : 0.0);
+                            row.Add($"{dbValue:F3}");
                         }
 
                         writer.WriteLine(string.Join(",", row));
@@ -271,8 +272,12 @@ namespace AntennaReader
                     foreach (AntennaDiagram diagram in selectedDiagrams)
                     {
                         AntennaDiagram result = db.AntennaDiagrams
-                            .Include(d => d.InterpolatedMeasurements)
+                            .Include(d => d.Measurements)
                             .First(d => d.Id == diagram.Id);
+
+                        Dictionary<int, double> raw = result.Measurements
+                            .ToDictionary(m => m.Angle, m => m.DbValue);
+                        Dictionary<int, double> dense = Interpolator.Interpolate(raw, InterpolationMode.Monotone);
 
                         string filename = SafeFileName(result.AntennaName);
                         string filePath = System.IO.Path.Combine(AppPaths.ExportFolder, $"{filename}.PAT");
@@ -283,11 +288,8 @@ namespace AntennaReader
 
                             for (int angle = 0; angle < 360; angle++)
                             {
-                                AntennaInterpolatedMeasurement? measurement =
-                                    result.InterpolatedMeasurements.FirstOrDefault(m => m.Angle == angle);
-
-                                double dbValue = measurement?.DbValue ?? 0.0;
-                                writer.WriteLine($" {angle}, {dbValue:F1}");
+                                double dbValue = dense.TryGetValue(angle, out double v) ? v : 0.0;
+                                writer.WriteLine($" {angle}, {dbValue:F3}");
                             }
 
                             writer.WriteLine("999");
