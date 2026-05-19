@@ -19,21 +19,26 @@ namespace AntennaReader
     /// </summary>
     public partial class SaveDialog : Window
     {
+        #region Attributes
         public string antennaName { get; private set; } = string.Empty;
         public string owner { get; private set; } = string.Empty;
         public string state { get; private set; } = string.Empty;
         public string city { get; private set; } = string.Empty;
+        #endregion
 
+        #region Constructor1
         /// <summary>
-        /// empty dialog — used by "Save to Database" for brand new entries
+        /// default empty dialog for saving brand new entries to the database.
         /// </summary>
         public SaveDialog()
         {
             InitializeComponent();
         }
+        #endregion
 
+        #region Constructor2
         /// <summary>
-        /// pre-filled dialog — used by "Edit" in DatabaseBrowser to modify an existing entry
+        /// special save dialog used by to modify an existing entry. it has prefilled components and diffrent button texts
         /// </summary>
         public SaveDialog(string name, string owner, string state, string city)
         {
@@ -45,7 +50,14 @@ namespace AntennaReader
             this.Title = "Edit Antenna";
             SaveButton.Content = "Update";
         }
+        #endregion
 
+        #region Function Click Save
+        /// <summary>
+        /// handles save click
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Save_Click(object sender, RoutedEventArgs e)
         {
             string name = AntennaNameBox.Text.Trim();
@@ -61,5 +73,6 @@ namespace AntennaReader
             this.city = CityBox.Text.Trim();
             this.DialogResult = true;
         }
+        #endregion
     }
 }

@@ -14,31 +14,21 @@ namespace AntennaReader
     /// </summary>
     public partial class SettingsWindow : Window
     {
-        // limits for the dB range inputs
+        #region Attributes
         private const double MinAllowedLowerBound = -20.0;
         private const double MaxAllowedLowerBound = 50.0;
         private const double MinAllowedUpperBound = 5.0;
         private const double MaxAllowedUpperBound = 60.0;
         private const double MinAllowedRange = 5.0;
-
-        // precision dropdown limits (decimal places)
         private const int MinExportPrecision = 0;
         private const int MaxExportPrecision = 3;
-
         // tolerance for matching doubles in the contour step dropdown
         private const double DoubleMatchTolerance = 1e-9;
-
-        // the live editable copy — every edit goes here, and the canvas mirrors it
         public DrawingCanvasSetting currentSetting { get; private set; }
-        // a snapshot taken when the window opened — used to revert if user cancels
         private DrawingCanvasSetting originalSetting;
-        // true while the constructor is still populating controls
-        // we use this to ignore event handlers firing during initial setup
         private bool isInitializing = true;
-
-        // raised every time the user changes something
-        // MainWindow subscribes so the canvas updates live
         public event Action<DrawingCanvasSetting>? SettingChanged;
+        #endregion
 
         #region Constructor
         public SettingsWindow(DrawingCanvasSetting setting)

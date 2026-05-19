@@ -66,8 +66,6 @@ namespace AntennaReader
         }
         #endregion
 
-        
-
         #region Click -> Open Image Folder
         /// <summary>
         /// opens the image folder

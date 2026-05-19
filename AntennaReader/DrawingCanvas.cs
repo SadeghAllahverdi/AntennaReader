@@ -45,6 +45,73 @@ namespace AntennaReader
         private string _resizeDirection = "";           // resize direction
         private Point _origin = new Point(0.0, 0.0);    // orign of the diagram
         private double _zoomFactor = 1.0;               // zoom factor
+        public Point? DiagramCenter
+        {
+            get
+            {
+                if (this._startPoint == null || this._endPoint == null)
+                {
+                    return null;
+                }
+                Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+                return new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+            }
+        }
+
+        public double DiagramRadiusX
+        {
+            get
+            {
+                if (this._startPoint == null || this._endPoint == null)
+                {
+                    return 0.0;
+                }
+                Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+                return rect.Width / 2;
+            }
+        }
+
+        public double DiagramRadiusY
+        {
+            get
+            {
+                if (this._startPoint == null || this._endPoint == null)
+                {
+                    return 0.0;
+                }
+                Rect rect = new Rect(this._startPoint.Value, this._endPoint.Value);
+                return rect.Height / 2;
+            }
+        }
+
+        public BitmapImage? BackgroundImage
+        {
+            get
+            {
+                return this._backgroundImage;
+            }
+        }
+        public double BackgroundRotation
+        {
+            get
+            {
+                return this._backgroundRotation;
+            }
+        } 
+        public double BackgroundDrawX
+        {
+            get
+            {
+                return this._bgDrawX;
+            }
+        }
+        public double BackgroundDrawY
+        {
+            get
+            {
+                return this._bgDrawY;
+            }
+        }
         public bool HasDiagram
         {
             get
@@ -848,6 +915,20 @@ namespace AntennaReader
         public void SetBackgroundImage(string filePath)
         {
             this._backgroundImage = new BitmapImage(new Uri(filePath, UriKind.Absolute));
+            InvalidateVisual();
+        }
+        #endregion
+
+        #region Helper Function (Set Diagram Bounds)
+        /// <summery>
+        /// sets the diagram bounds with given start and end points
+        /// </summery>
+        public void SetDiagramBounds(Point start, Point end)
+        {
+            this._SaveState(); // save state
+            this._startPoint = start;
+            this._endPoint = end;
+            this._UpdateMeasurements();
             InvalidateVisual();
         }
         #endregion
