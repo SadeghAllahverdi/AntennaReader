@@ -19,41 +19,49 @@ namespace AntennaReader
         #region States
         private bool _isDrawing = false;    // draw state
         private bool _isMoving = false;     // move state
-        private bool _isResizing = false;   // resize state
+        private bool _isResizing = false;   // resize stateS
         private bool _isLocked = false;     // locked state
-        public bool IsLocked { get => _isLocked; set => _isLocked = value; } // property -> is diagram locked?
+        public bool IsLocked { get => _isLocked; set => _isLocked = value; }
         #endregion
 
         #region Attributes
+        // image
         private BitmapImage? _backgroundImage = null;   // background image
-        private double _backgroundRotation = 0.0;       // background rotation
-        private double _bgDrawX = 0.0;               // background draw x position
-        private double _bgDrawY = 0.0;               // background draw y position
-
+        public bool HasBackgroundImage
+        {
+            get
+            {
+                return this._backgroundImage != null;
+            }
+        }
+        private double _backgroundRotation = 0.0;       // background image rotation
+        private double _bgDrawX = 0.0;                  // background image draw x position
+        private double _bgDrawY = 0.0;                  // background image draw y position
+        // diagram
         private Point? _startPoint = null;              // start point for draw
         private Point? _endPoint = null;                // end point for draw
-
         private Point? _moveStartPoint = null;          // start point for move
         private Point? _moveEndPoint = null;            // end point for move
-
         private string _resizeDirection = "";           // resize direction
-        private Point _origin = new Point(0.0, 0.0);    // origne of the diagram
+        private Point _origin = new Point(0.0, 0.0);    // orign of the diagram
         private double _zoomFactor = 1.0;               // zoom factor
-
-        private List<int> _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };    // contour levels in dB
-
-        private bool _isPerformingUndoRedo = false; // are we doing undo-redo?
-        public bool HasDiagram => this._startPoint != null && this._endPoint != null;
-
-        public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
-        public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
-        private const int maxUndoRedoSteps = 30; // maximum undo-redo steps
+        public bool HasDiagram
+        {
+            get
+            {
+                return this._startPoint != null && this._endPoint != null;
+            }
+        }
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store measurements
         private InterpolationMode _interpolationMode = InterpolationMode.Monotone;
         private Dictionary<int, double> _interpolatedMeasurements = new Dictionary<int, double>();
         public InterpolationMode InterpolationMode
         {
-            get => _interpolationMode;
+            get
+            {
+                return _interpolationMode;
+            }
+
             set
             {
                 _interpolationMode = value;
@@ -61,10 +69,13 @@ namespace AntennaReader
                 InvalidateVisual();
             }
         }
-
-        private bool _isEqoDistMode = false;
-        private int _eqoDistMaxDb = 30;
-
+        // default diagram setting: cn change it from here or from the DiagramCanvasSetting.cs
+        public DrawingCanvasSetting Setting { get; private set; } = new DrawingCanvasSetting();
+        // undo-redo
+        private bool _isPerformingUndoRedo = false; // are we doing undo-redo?
+        public Stack<DiagramState> UndoStack = new Stack<DiagramState>(); // undo stack
+        public Stack<DiagramState> RedoStack = new Stack<DiagramState>(); // redo stack
+        private const int maxUndoRedoSteps = 120; // maximum undo-redo steps
         #endregion
 
         #region Constructor 
@@ -74,7 +85,6 @@ namespace AntennaReader
         public DrawingCanvas()
         {
             this.Focusable = true;                 // enable keyboard focus
-            this.Background = Brushes.DarkGray;    // set default background color
             // subscribe to mouse and key event handlers
             this.MouseLeftButtonDown += DrawingCanvas_MouseLeftButtonDown; // left click
             this.MouseLeftButtonUp += DrawingCanvas_MouseLeftButtonUp;     // left release
@@ -127,6 +137,17 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void DrawingCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            // check if diagram is not too small
+            if (this._isDrawing && this._startPoint != null && this._endPoint != null)
+            { 
+                double minimumDiagramSize = 25.0; // in pixel
+                double diagramSize = (this._endPoint.Value - this._startPoint.Value).Length * this._zoomFactor;
+                if (diagramSize < minimumDiagramSize)
+                {
+                    this.DeleteDiagram();
+                    return;
+                }
+            }
             this._isDrawing = false;    // reset draw state
             this._isMoving = false;     // reset move state
             this._isResizing = false;   // reset resize state
@@ -428,8 +449,8 @@ namespace AntennaReader
                 // draw label
                 dc.DrawText(text, new Point(tx - text.Width / 2, ty - text.Height / 2));
             }
-            // draw contour lines and labels
-            foreach (int cr in this._contours)
+            // draw contour lines and labels from drawing canvas setting
+            foreach (double cr in Setting.GetContours())
             {
                 // calculate rx and ry based on contour value
                 double r = this.DistanceFromDb(cr);
@@ -488,7 +509,7 @@ namespace AntennaReader
 
                 for (int i = 0; i < sortedDegrees.Count; i++)
                 {
-                    dc.DrawLine(new Pen(Brushes.Orange, 3),
+                    dc.DrawLine(new Pen(Brushes.Orange, 1),
                         DegToPoint(sortedDegrees[i]),
                         DegToPoint(sortedDegrees[(i + 1) % sortedDegrees.Count]));
                 }
@@ -501,36 +522,63 @@ namespace AntennaReader
         #endregion
 
         #region Helper Function (dB From Distance)
-        private double DbFromDistance(double distance)
+        private double DbFromDistance(double normalizedDistance)
         {
-            distance = Math.Clamp(distance, 0.0, 1.0);
-            if (this._isEqoDistMode)
+            normalizedDistance = Math.Clamp(normalizedDistance, 0.0, 1.0);
+            if (!Setting.IsLogScale)
             {
-                return Math.Clamp((1.0 - distance) * this._eqoDistMaxDb, 0.0, _eqoDistMaxDb);
+                //: for eqo distance mode: lower bound at edge of the diagram, upper bound at center. scale linear
+                double range = Setting.upperBound - Setting.lowerBound;
+                return Math.Clamp(Setting.lowerBound + (1.0 - normalizedDistance) * range, Setting.lowerBound, Setting.upperBound);
             }
-            return Math.Clamp(-20.0 * Math.Log10(Math.Max(distance, 1e-6)), 0.0, 30.0);
+            // for log: 0 dB at edge, upperbound at center. scale logarithmic
+            return Math.Clamp(-20.0 * Math.Log10(Math.Max(normalizedDistance, 1e-6)), 0.0, Setting.upperBound);
         }
         #endregion
 
         #region Helper Function (Distance From dB)
         private double DistanceFromDb(double db)
         {
-            if (this._isEqoDistMode)
+            // for eqo dist mode: convert db to normalized distance linearly
+            if (!Setting.IsLogScale)
             {
-                db = Math.Clamp(db, 0.0, this._eqoDistMaxDb);
-                return 1.0 - (db / this._eqoDistMaxDb);
+                double range = Setting.upperBound - Setting.lowerBound;
+                if (range <= 0) return 1.0;
+                db = Math.Clamp(db, Setting.lowerBound, Setting.upperBound);
+                return Math.Clamp(1.0 - (db - Setting.lowerBound) / range, 0.0, 1.0);
             }
-            db = Math.Clamp(db, 0.0, 30.0);
+            // for log: convert db to normalized distance logarithmically
+            db = Math.Clamp(db, 0.0, Setting.upperBound);
             return Math.Pow(10.0, -db / 20.0);
         }
         #endregion
 
-        #region Helper Function (Enable Flat Mode)
-        public void EnableFlatMode(int maxDb)
+        #region Helper Function (Apply Setting)
+        /// <summary>
+        /// applies new diagram settings and refreshes the canvas
+        /// </summary>
+        public void ApplySetting(DrawingCanvasSetting setting)
         {
-            this._isEqoDistMode = true;
-            this._eqoDistMaxDb = Math.Max(1, maxDb);
-            this._contours = Enumerable.Range(1, this._eqoDistMaxDb).ToList();
+            this.Setting = setting;
+            this._UpdateMeasurements();
+            this.InvalidateVisual();
+        }
+        #endregion
+
+        #region Helper Function (Enable Equal-Distance Mode)
+        /// <summary>
+        /// switches to equal-distance (linear) mode with a given upper dB bound
+        /// </summary>
+        public void EnableEqualDistanceMode(int db)
+        {
+            Setting.IsLogScale = false;
+            Setting.upperBound = Math.Max(1, db);
+            // pick a contour step that gives a reasonable number of rings
+            var validSteps = Setting.GetValidContourSteps();
+            if (validSteps.Count > 0 && !validSteps.Contains(Setting.ContourStep))
+            {
+                Setting.ContourStep = validSteps[validSteps.Count / 2];
+            }
             _UpdateMeasurements();
             InvalidateVisual();
         }
@@ -539,9 +587,12 @@ namespace AntennaReader
         #region Helper Function (Enable Log Mode)
         public void EnableLogMode()
         {
-            this._isEqoDistMode = false;
-            this._eqoDistMaxDb = 30;
-            _contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
+            Setting.IsLogScale = true;
+            if (Setting.upperBound <= 0)
+            {
+                Setting.upperBound = 30.0;
+            }
+            Setting.ContourStep = 5;
             _UpdateMeasurements();
             InvalidateVisual();
         }
@@ -585,8 +636,7 @@ namespace AntennaReader
                 this._endPoint,
                 this.measurements,
                 this._isLocked,
-                this._isEqoDistMode,
-                this._eqoDistMaxDb
+                this.Setting
             );
 
             this.UndoStack.Push(currentState); // push current state to undo stack
@@ -614,8 +664,7 @@ namespace AntennaReader
                this._endPoint,
                this.measurements,
                this._isLocked,
-               this._isEqoDistMode,
-               this._eqoDistMaxDb
+               this.Setting
             );
             this.RedoStack.Push(currentState);
             this.TrimStateStack(this.RedoStack);
@@ -626,10 +675,7 @@ namespace AntennaReader
             this._endPoint = prevState.EndPoint;
             this.measurements = new Dictionary<int, (double, Point)>(prevState.Measurements);
             this._isLocked = prevState.IsLocked;
-            this._isEqoDistMode = prevState.IsEqoDistanceMode;
-            this._eqoDistMaxDb = Math.Max(1, prevState.EqoDistanceMaxDb);
-            this._contours = this._isEqoDistMode ? Enumerable.Range(1, this._eqoDistMaxDb).ToList()
-                                                 : new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
+            this.Setting = prevState.Setting.Clone();
             this._UpdateMeasurements();
 
             this._isPerformingUndoRedo = false; // reset flag -> not performing undo-redo
@@ -656,8 +702,7 @@ namespace AntennaReader
                this._endPoint,
                this.measurements,
                this._isLocked,
-               this._isEqoDistMode,
-               this._eqoDistMaxDb
+               this.Setting
             );
             this.UndoStack.Push(currentState);
             this.TrimStateStack(this.UndoStack);
@@ -667,10 +712,7 @@ namespace AntennaReader
             this._endPoint = nextState.EndPoint;
             this.measurements = new Dictionary<int, (double, Point)>(nextState.Measurements);
             this._isLocked = nextState.IsLocked;
-            this._isEqoDistMode = nextState.IsEqoDistanceMode;
-            this._eqoDistMaxDb = Math.Max(1, nextState.EqoDistanceMaxDb);
-            this._contours = this._isEqoDistMode ? Enumerable.Range(1, this._eqoDistMaxDb).ToList()
-                                                 : new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
+            this.Setting = nextState.Setting.Clone();
             this._UpdateMeasurements();
 
             this._isPerformingUndoRedo = false; // reset flag -> not performing undo-redo
@@ -920,10 +962,6 @@ namespace AntennaReader
             this._resizeDirection = "";
             // update visuals
 
-            this._isEqoDistMode = false;
-            this._eqoDistMaxDb = 30;
-            this._contours = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30 };
-
             this.InvalidateVisual();
         }
         #endregion
@@ -1058,7 +1096,7 @@ namespace AntennaReader
             this.measurements = updatedMeasurements;
             // extract dB values from measurements and interpolate
             var rawDb = this.measurements.ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
-            this._interpolatedMeasurements = Interpolator.Interpolate(rawDb, this._interpolationMode);
+            this._interpolatedMeasurements = Interpolator.Interpolate(rawDb, this._interpolationMode, this.Setting);
         }
         #endregion
 

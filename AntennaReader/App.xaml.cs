@@ -18,20 +18,19 @@ namespace AntennaReader
 
             try
             {
-
                 AppPaths.EnsureFolderExists();
-                using (var db = new AppDbContext())
-                {   
-                    // I added these 2 lines for debugging 
-                    var conn = db.Database.GetDbConnection();
-                    MessageBox.Show($"DataBase Path = {AppPaths.DBPath}\nConnection Source = {conn.DataSource}", "Database Check", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                    db.Database.EnsureCreated();
+                using (AppDbContext db = new AppDbContext())
+                {
+                    db.Database.Migrate();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to initialize data base: {ex.Message}", "Database Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    $"Failed to initialize database: {ex.Message}\n\nDatabase location: {AppPaths.DBPath}",
+                    "Database Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
     }

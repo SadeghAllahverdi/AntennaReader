@@ -25,46 +25,248 @@ namespace AntennaReader
     {
         #region Command Bindings
         public static RoutedUICommand OpenImageCommand = new RoutedUICommand();
-        public static RoutedUICommand DeleteImageCommand = new RoutedUICommand();
-        
+        public static RoutedUICommand DeleteBackgroundImageFromCanvasCommand = new RoutedUICommand();
+
         public static RoutedUICommand SaveDBCommand = new RoutedUICommand();
         public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
 
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
-        public static RoutedUICommand EqoDistCommand = new RoutedUICommand();
-        public static RoutedUICommand EqoDistIncCommand = new RoutedUICommand();
-        public static RoutedUICommand EqoDistDecCommand = new RoutedUICommand();
+        public static RoutedUICommand ToggleScaleModeCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
 
         public static RoutedUICommand UndoCommand = new RoutedUICommand();
         public static RoutedUICommand RedoCommand = new RoutedUICommand();
-        #endregion
 
-        private int _eqoDistMaxDb = 15;
-        private bool _eqoDistEnabled = false;
+        public static RoutedUICommand OpenSettingsCommand = new RoutedUICommand();
+        public static RoutedUICommand OpenPreferencesCommand = new RoutedUICommand();
+        #endregion
 
         #region Constructor
         public MainWindow()
         {
             InitializeComponent();
 
-            // connect command bindings to handler functions
             CommandBindings.Add(new CommandBinding(OpenImageCommand, OpenImage_Click));
-            CommandBindings.Add(new CommandBinding(DeleteImageCommand, DeleteImage_Click));
+            CommandBindings.Add(new CommandBinding(DeleteBackgroundImageFromCanvasCommand, DeleteBackgroundImageFromCanvas_Click));
 
             CommandBindings.Add(new CommandBinding(SaveDBCommand, SaveDB_Click));
             CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
 
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
-            CommandBindings.Add(new CommandBinding(EqoDistCommand, EqoDistButton_Click));
-            CommandBindings.Add(new CommandBinding(EqoDistIncCommand, EqoDistInc_Click));
-            CommandBindings.Add(new CommandBinding(EqoDistDecCommand, EqoDistDec_Click));
+            CommandBindings.Add(new CommandBinding(ToggleScaleModeCommand, ToggleScaleMode_Click));
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
 
             CommandBindings.Add(new CommandBinding(UndoCommand, Undo_Click));
             CommandBindings.Add(new CommandBinding(RedoCommand, Redo_Click));
+
+            CommandBindings.Add(new CommandBinding(OpenSettingsCommand, OpenSettings_Click));
+            CommandBindings.Add(new CommandBinding(OpenPreferencesCommand, OpenPreferences_Click));
+        }
+        #endregion
+
+        
+
+        #region Click -> Open Image Folder
+        /// <summary>
+        /// opens the image folder
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenImage_Click(object sender, RoutedEventArgs e)
+        {
+            Directory.CreateDirectory(AppPaths.ImageFolder);
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "Image Files (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg",
+                InitialDirectory = AppPaths.ImageFolder,
+                Title = "Select an Image to Load as Background of the canvas"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                string filePath = openFileDialog.FileName;
+                try
+                {
+                    drawingCanvas.SetBackgroundImage(filePath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        messageBoxText: $"Failed to load image: {ex.Message}",
+                        caption: "Error",
+                        button: MessageBoxButton.OK,
+                        icon: MessageBoxImage.Error
+                        );
+                }
+            }
+        }
+        #endregion
+
+        #region Click -> Delete Image From Canvas
+        /// <summary>
+        /// if there is a background image, it deletes it from the canvas.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void DeleteBackgroundImageFromCanvas_Click(object sender, RoutedEventArgs e)
+        {
+            // if no BG image, return
+            if (!drawingCanvas.HasBackgroundImage)
+            {
+                return;
+            }
+            // otherwise
+            MessageBoxResult result = MessageBox.Show(
+                messageBoxText: "Are you sure you want to remove the background image from the canvas? This action cannot be undone.",
+                caption: "Confirm Deletion",
+                button: MessageBoxButton.YesNo,
+                icon: MessageBoxImage.Question,
+                defaultResult: MessageBoxResult.No);
+            if (result == MessageBoxResult.Yes)
+            {
+                drawingCanvas.DeleteBackgroundImage();
+            }
+        }
+        #endregion
+
+        #region Click -> Open Database
+        /// <summary>
+        /// opens the database browser window.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenDB_Click(object sender, RoutedEventArgs e)
+        {
+            DatabaseBrowser dbBrowser = new DatabaseBrowser();
+            dbBrowser.Owner = this;
+            dbBrowser.Show();
+        }
+        #endregion
+
+        #region Click -> Save to Database
+        /// <summary>
+        /// opens dialog window to save the current diagram to the database.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SaveDB_Click(object sender, RoutedEventArgs e)
+        {
+            // check if user has meaured at least 2 points
+            if (drawingCanvas.measurements.Count < 2) 
+            {
+                MessageBox.Show(
+                    messageBoxText: "Please measure at least 2 points before saving.",
+                    caption: "Incomplete Measurement",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Exclamation);
+                return;
+            }
+
+            SaveDialog dlg = new SaveDialog();
+            bool? result = dlg.ShowDialog();
+            if (result != true) return;
+
+            string antennaName = dlg.antennaName;
+            string owner = dlg.owner;
+            string state = dlg.state;
+            string city = dlg.city;
+
+            try
+            {
+                // raw db values that user has measured (angle, db)
+                Dictionary<int, double> rawDb = drawingCanvas.measurements
+                    .ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
+
+                // interpolated values based on raw db and current interpolation mode
+                Dictionary<int, double> interpolatedValues =
+                    Interpolator.Interpolate(rawDb, drawingCanvas.InterpolationMode, drawingCanvas.Setting);
+
+                using (AppDbContext db = new AppDbContext())
+                {
+                    // check if diagram already exists
+                    AntennaDiagram? oldDiagram = db.AntennaDiagrams
+                        .Include(d => d.Measurements)
+                        .Include(d => d.InterpolatedMeasurements)
+                        .FirstOrDefault(d => d.AntennaName.ToLower() == antennaName.ToLower());
+                    // overwite if it exists
+                    if (oldDiagram != null)
+                    {
+                        oldDiagram.AntennaOwner = owner ?? string.Empty;
+                        oldDiagram.State = state ?? string.Empty;
+                        oldDiagram.City = city ?? string.Empty;
+                        oldDiagram.CreateDate = DateTime.Now;
+
+                        db.AntennaMeasurements.RemoveRange(oldDiagram.Measurements);
+                        db.AntennaInterpolatedMeasurements.RemoveRange(oldDiagram.InterpolatedMeasurements);
+                        oldDiagram.Measurements.Clear();
+                        oldDiagram.InterpolatedMeasurements.Clear();
+
+                        foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
+                        {
+                            oldDiagram.Measurements.Add(new AntennaMeasurement
+                            {
+                                Angle = kvp.Key,
+                                DbValue = kvp.Value.Item1
+                            });
+                        }
+
+                        foreach (KeyValuePair<int, double> kvp in interpolatedValues)
+                        {
+                            oldDiagram.InterpolatedMeasurements.Add(new AntennaInterpolatedMeasurement
+                            {
+                                Angle = kvp.Key,
+                                DbValue = kvp.Value
+                            });
+                        }
+
+                        db.SaveChanges();
+
+                        MessageBox.Show($"Antenna {antennaName} was overwritten in the database.",
+                            "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+                    // create new diagram if it doesn't exist
+                    AntennaDiagram newDiagram = new AntennaDiagram
+                    {
+                        AntennaName = antennaName,
+                        AntennaOwner = owner ?? string.Empty,
+                        State = state ?? string.Empty,
+                        City = city ?? string.Empty,
+                        CreateDate = DateTime.Now
+                    };
+
+                    foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
+                    {
+                        newDiagram.Measurements.Add(new AntennaMeasurement
+                        {
+                            Angle = kvp.Key,
+                            DbValue = kvp.Value.Item1
+                        });
+                    }
+
+                    foreach (KeyValuePair<int, double> kvp in interpolatedValues)
+                    {
+                        newDiagram.InterpolatedMeasurements.Add(new AntennaInterpolatedMeasurement
+                        {
+                            Angle = kvp.Key,
+                            DbValue = kvp.Value
+                        });
+                    }
+
+                    db.AntennaDiagrams.Add(newDiagram);
+                    db.SaveChanges();
+                }
+
+                MessageBox.Show($"Antenna {antennaName} has been saved to the database.",
+                    "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving to database: {ex.Message}",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         #endregion
 
@@ -75,15 +277,19 @@ namespace AntennaReader
         public void ImportDiagramById(int id)
         {
             using (AppDbContext db = new AppDbContext())
-            {
+            {   // check if diagram exists
                 AntennaDiagram? diagram = db.AntennaDiagrams
                     .Include(d => d.Measurements)
                     .Include(d => d.InterpolatedMeasurements)
                     .FirstOrDefault(d => d.Id == id);
-
+                // something has gon terribly wrong if this shows up :(
                 if (diagram == null)
                 {
-                    MessageBox.Show("Diagram not found in database.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(
+                        messageBoxText:"Something went wrong. the chosen diagram is not found in database!", 
+                        caption:"Error", 
+                        button:MessageBoxButton.OK, 
+                        icon:MessageBoxImage.Error);
                     return;
                 }
 
@@ -92,10 +298,14 @@ namespace AntennaReader
                 {
                     measurements[m.Angle] = m.DbValue;
                 }
-
+                // and its even worse with this one!
                 if (!drawingCanvas.SetMeasurements(measurements))
                 {
-                    MessageBox.Show("Error importing measurements from database.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(
+                        messageBoxText:"Error importing measurements from database.", 
+                        caption:"Error", 
+                        button:MessageBoxButton.OK, 
+                        icon:MessageBoxImage.Error);
                     return;
                 }
 
@@ -104,252 +314,45 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Open Image
-        /// <summary>
-        /// handles when "Open Image" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void OpenImage_Click(object sender, RoutedEventArgs e)
-        {
-            Directory.CreateDirectory(AppPaths.ImageFolder); // ensure image folder exists
-            // open file explorer
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "Image Files (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg";
-            openFileDialog.InitialDirectory = AppPaths.ImageFolder;
-            // user chose a file
-            if (openFileDialog.ShowDialog() == true)
-            {
-                // get file path
-                string filePath = openFileDialog.FileName;
-                try
-                {
-                    // set background image
-                    drawingCanvas.SetBackgroundImage(filePath);
-                }
-                catch (Exception ex)
-                {
-                    // show error
-                    MessageBox.Show($"Error loading image: {ex.Message}","Error", MessageBoxButton.OK ,MessageBoxImage.Error);
-                }
-            }
-        }
-        #endregion
-
-        #region Click -> Delete Image
-        /// <summary>
-        /// handles when "Delete Image" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void DeleteImage_Click(object sender, RoutedEventArgs e)
-        {
-            drawingCanvas.DeleteBackgroundImage();
-            MessageBox.Show("Image deleted!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        #endregion
-
-        #region Click -> Open Database
-        /// <summary>
-        /// Handles when Open Database Browser is clicked
-        ///</summary>>
-        private void OpenDB_Click(object sender, RoutedEventArgs e)
-        {
-            DatabaseBrowser browser = new DatabaseBrowser(); // initialize db browser window
-            browser.Owner = this; // owner is main window
-            browser.Show(); // show
-        }
-        #endregion
-
-        #region Click -> Save to Database
-        /// <summary>
-        /// Saves the current diagram and its measurements to the SQLite database
-        /// </summary>
-        private void SaveDB_Click(object sender, RoutedEventArgs e)
-        {
-            if (drawingCanvas.measurements.Count < 2)
-            {
-                MessageBox.Show(
-                    "Please ensure that all the points have been measured.",
-                    "Incomplete Measurement",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Exclamation);
-                return;
-            }
-
-            SaveDialog dlg = new SaveDialog();
-            bool? result = dlg.ShowDialog();
-            if (result != true)
-            {
-                return;
-            }
-
-            string antennaName = dlg.antennaName;
-            string owner = dlg.owner;
-            string state = dlg.state;
-            string city = dlg.city;
-
-            try
-            {
-                // rebuild interpolated values from measured points
-                Dictionary<int, double> rawDb = drawingCanvas.measurements
-                    .ToDictionary(kv => kv.Key, kv => kv.Value.Item1);
-
-                Dictionary<int, double> interpolatedValues =
-                    Interpolator.Interpolate(rawDb, drawingCanvas.InterpolationMode);
-
-                using (AppDbContext db = new AppDbContext())
-                {
-                    AntennaDiagram? existingDiagram = db.AntennaDiagrams
-                        .Include(d => d.Measurements)
-                        .Include(d => d.InterpolatedMeasurements)
-                        .FirstOrDefault(d => d.AntennaName.ToLower() == antennaName.ToLower());
-
-                    if (existingDiagram != null)
-                    {
-                        existingDiagram.AntennaOwner = owner ?? string.Empty;
-                        existingDiagram.State = state ?? string.Empty;
-                        existingDiagram.City = city ?? string.Empty;
-                        existingDiagram.CreateDate = DateTime.Now;
-
-                        db.AntennaMeasurements.RemoveRange(existingDiagram.Measurements);
-                        db.AntennaInterpolatedMeasurements.RemoveRange(existingDiagram.InterpolatedMeasurements);
-
-                        existingDiagram.Measurements.Clear();
-                        existingDiagram.InterpolatedMeasurements.Clear();
-
-                        // save original measured points
-                        foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
-                        {
-                            existingDiagram.Measurements.Add(new AntennaMeasurement
-                            {
-                                Angle = kvp.Key,
-                                DbValue = kvp.Value.Item1
-                            });
-                        }
-
-                        // save interpolated values
-                        foreach (KeyValuePair<int, double> kvp in interpolatedValues)
-                        {
-                            existingDiagram.InterpolatedMeasurements.Add(new AntennaInterpolatedMeasurement
-                            {
-                                Angle = kvp.Key,
-                                DbValue = kvp.Value
-                            });
-                        }
-
-                        db.SaveChanges();
-
-                        MessageBox.Show(
-                            $"Antenna {antennaName} was overwritten in the database.",
-                            "Success",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
-                        return;
-                    }
-
-                    AntennaDiagram diagram = new AntennaDiagram
-                    {
-                        AntennaName = antennaName,
-                        AntennaOwner = owner ?? string.Empty,
-                        State = state ?? string.Empty,
-                        City = city ?? string.Empty,
-                        CreateDate = DateTime.Now
-                    };
-
-                    // save original measured points
-                    foreach (KeyValuePair<int, (double, Point)> kvp in drawingCanvas.measurements)
-                    {
-                        diagram.Measurements.Add(new AntennaMeasurement
-                        {
-                            Angle = kvp.Key,
-                            DbValue = kvp.Value.Item1
-                        });
-                    }
-
-                    // save interpolated values
-                    foreach (KeyValuePair<int, double> kvp in interpolatedValues)
-                    {
-                        diagram.InterpolatedMeasurements.Add(new AntennaInterpolatedMeasurement
-                        {
-                            Angle = kvp.Key,
-                            DbValue = kvp.Value
-                        });
-                    }
-
-                    db.AntennaDiagrams.Add(diagram);
-                    db.SaveChanges();
-                }
-
-                MessageBox.Show(
-                    $"Antenna {antennaName} has been saved to the database.",
-                    "Success",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Error saving to database: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
-        #endregion
-
         #region Click -> Delete Diagram
         /// <summary>
-        /// handles when "Delete Diagram" is clicked
+        /// calls DeleteDiagram()
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void DeleteDiagram_Click(object sender, RoutedEventArgs e)
         {
+            if (!drawingCanvas.HasDiagram)
+            {
+                return;
+            }
             drawingCanvas.DeleteDiagram();
             LockStatusText.Foreground = Brushes.Green;
             LockStatusText.Text = "Unlocked";
-
-            EqoDistButton.IsChecked = false;
-            EqoDistButton.Header = "Equal-Distance";
         }
         #endregion
 
         #region Click -> Lock Diagram
-        /// <summary>
-        /// handles when "Lock Diagram" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void LockDiagram_Click(object sender, RoutedEventArgs e)
         {
-            // check if diagram exists
             if (!drawingCanvas.HasDiagram)
             {
-                MessageBox.Show("Please Draw a Diagram first!", "No Diagram", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
             }
-            drawingCanvas.IsLocked = !drawingCanvas.IsLocked; // change lock state
+            drawingCanvas.IsLocked = !drawingCanvas.IsLocked;
             drawingCanvas.Focus();
-
+            // update lock button header ...
             LockButton.Header = drawingCanvas.IsLocked ? "Unlock (Ctrl + L)" : "Lock (Ctrl + L)";
-
             LockStatusText.Foreground = drawingCanvas.IsLocked ? Brushes.DarkRed : Brushes.Green;
             LockStatusText.Text = drawingCanvas.IsLocked ? "Locked" : "Unlocked";
         }
         #endregion
 
         #region Click -> Delete Points
-        /// <summary>
-        /// handles when "Delete Points" is clicked
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void DeletePoints_Click(object sender, RoutedEventArgs e)
         {
             if (!drawingCanvas.HasDiagram)
             {
-                MessageBox.Show("Please Draw a Diagram first!", "No Diagram", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
             }
             drawingCanvas.DeleteMeasurements();
@@ -358,8 +361,10 @@ namespace AntennaReader
 
         #region Click -> Interpolation Mode
         /// <summary>
-        /// handles when an interpolation mode is selected from the menu
+        /// sets the interpolation mode that drawing canvas applies to the measured points
         /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void InterpMode_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem item &&
@@ -370,58 +375,89 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Eqo Distance
-
-        private void EqoDistButton_Click(object sender, RoutedEventArgs e)
+        #region Click -> Toggle Scale Mode (between log and equal-distance)
+        /// <summary>
+        /// quick shortcut to flip the canvas between log and equal-distance scale modes
+        /// </summary>
+        private void ToggleScaleMode_Click(object sender, RoutedEventArgs e)
         {
-            _eqoDistEnabled = !_eqoDistEnabled;
+            // clone the current setting
+            DrawingCanvasSetting newSetting = drawingCanvas.Setting.Clone();
 
-            if (_eqoDistEnabled)
-            {
-                drawingCanvas.EnableFlatMode(_eqoDistMaxDb);
-                EqoDistButton.Header = $"Equal-Distance (Max {_eqoDistMaxDb} dB)";
-            }
-            else
-            {
-                drawingCanvas.EnableLogMode();
-                EqoDistButton.Header = "Equal-Distance";
-            }
-
+            // apply new scale mode to it
+            newSetting.IsLogScale = !newSetting.IsLogScale;
+            // force lower bound of logarithmic scal to 0 db.
+            if (newSetting.IsLogScale) newSetting.lowerBound = 0.0;
+            drawingCanvas.ApplySetting(newSetting);
             drawingCanvas.Focus();
         }
-
-        private void EqoDistInc_Click(object sender, RoutedEventArgs e)
-        {
-            _eqoDistMaxDb = Math.Min(_eqoDistMaxDb + 1, 25);
-
-            if (_eqoDistEnabled)
-            {
-                drawingCanvas.EnableFlatMode(_eqoDistMaxDb);
-                EqoDistButton.Header = $"Equal-Distance (Max {_eqoDistMaxDb} dB)";
-                drawingCanvas.Focus();
-            }
-        }
-
-        private void EqoDistDec_Click(object sender, RoutedEventArgs e)
-        {
-            _eqoDistMaxDb = Math.Max(_eqoDistMaxDb - 1, 1);
-
-            if (_eqoDistEnabled)
-            {
-                drawingCanvas.EnableFlatMode(_eqoDistMaxDb);
-                EqoDistButton.Header = $"Equal-Distance (Max {_eqoDistMaxDb} dB)";
-                drawingCanvas.Focus();
-            }
-        }
-
         #endregion
 
-        #region Click -> Undo
+        #region Click -> Open Settings
         /// <summary>
-        /// performs undo action
+        /// opens drawing canvas setting window
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
+        private void OpenSettings_Click(object sender, RoutedEventArgs e)
+        {
+            // clone the current settig
+            DrawingCanvasSetting settingBeforeOpen = drawingCanvas.Setting.Clone();
+            SettingsWindow settingsWindow = new SettingsWindow(drawingCanvas.Setting);
+            settingsWindow.Owner = this;
+            settingsWindow.SettingChanged += s => drawingCanvas.ApplySetting(s.Clone());
+
+            bool? result = settingsWindow.ShowDialog();
+            if (result != true)
+            {
+                // user cancelled — revert canvas to what it was before
+                drawingCanvas.ApplySetting(settingBeforeOpen);
+            }
+            drawingCanvas.Focus();
+        }
+        #endregion
+
+        #region Click -> Open Preferences
+        /// <summary>
+        /// opens prefrences window
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenPreferences_Click(object sender, RoutedEventArgs e)
+        {
+            Prefrences preferencesWindow = new Prefrences();
+            preferencesWindow.Owner = this;
+            preferencesWindow.ShowDialog();
+        }
+        #endregion
+
+        #region Helper Function -> Load Preference
+        /// <summary>
+        /// loads a preference from the database by id and applies it to the canvas
+        /// </summary>
+        public void LoadPreference(int id)
+        {
+            using (AppDbContext db = new AppDbContext())
+            {
+                DrawingCanvasSetting? preference = db.DrawingCanvasSettings.FirstOrDefault(p => p.Id == id);
+
+                if (preference == null)
+                {
+                    MessageBox.Show(
+                        messageBoxText: "Something went wrong. The chosen preference was not found in the database!",
+                        caption: "Error",
+                        button: MessageBoxButton.OK,
+                        icon: MessageBoxImage.Error);
+                    return;
+                }
+
+                drawingCanvas.ApplySetting(preference);
+                drawingCanvas.Focus();
+            }
+        }
+        #endregion
+
+        #region Click -> Undo
         private void Undo_Click(object sender, RoutedEventArgs e)
         {
             if (drawingCanvas.UndoStack.Count > 0)
@@ -436,11 +472,6 @@ namespace AntennaReader
         #endregion
 
         #region Click -> Redo
-        /// <summary>
-        /// performs undo action
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void Redo_Click(object sender, RoutedEventArgs e)
         {
             if (drawingCanvas.RedoStack.Count > 0)
@@ -449,7 +480,7 @@ namespace AntennaReader
             }
             else
             {
-                MessageBox.Show("Nothing to Redo!", "Empty Re Stack", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Nothing to Redo!", "Empty Redo Stack", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         #endregion

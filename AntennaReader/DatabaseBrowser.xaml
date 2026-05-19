@@ -14,16 +14,16 @@
 
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <TextBox x:Name="SearchBar"
-             Height="28"
-             Padding="6,0,6,0"
-             TextChanged="SearchBar_TextChanged"/>
+                     Height="28"
+                     Padding="6,0,6,0"
+                     TextChanged="SearchBar_TextChanged"/>
 
             <TextBlock Text="Search (e.g. Antenna Name / State / City )"
-               Margin="10,0,0,0"
-               VerticalAlignment="Center"
-               Foreground="Gray"
-               FontStyle="Italic"
-               IsHitTestVisible="False">
+                       Margin="10,0,0,0"
+                       VerticalAlignment="Center"
+                       Foreground="Gray"
+                       FontStyle="Italic"
+                       IsHitTestVisible="False">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -41,6 +41,12 @@
                   Grid.Row="1"
                   Margin="0,0,0,10"
                   SelectionMode="Extended">
+            <ListView.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Edit Antenna Metadata" Click="Edit_Click"/>
+                    <MenuItem Header="Import to Diagram" Click="Import_Click"/>
+                </ContextMenu>
+            </ListView.ContextMenu>
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="ID" Width="50"

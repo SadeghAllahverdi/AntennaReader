@@ -11,21 +11,22 @@
 
     <Window.InputBindings>
         <KeyBinding Key="O" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenImageCommand}"/>
-        <KeyBinding Key="D" Modifiers="Ctrl" Command="{x:Static local:MainWindow.DeleteImageCommand}"/>
+        <KeyBinding Key="D" Modifiers="Ctrl" Command="{x:Static local:MainWindow.DeleteBackgroundImageFromCanvasCommand}"/>
 
         <KeyBinding Key="O" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.OpenDBCommand}"/>
         <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.SaveDBCommand}"/>
 
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
-        <KeyBinding Key="F" Modifiers="Ctrl" Command="{x:Static local:MainWindow.EqoDistCommand}"/>
-        <KeyBinding Key="K" Modifiers="Ctrl" Command="{x:Static local:MainWindow.EqoDistIncCommand}"/>
-        <KeyBinding Key="J" Modifiers="Ctrl" Command="{x:Static local:MainWindow.EqoDistDecCommand}"/>
+        <KeyBinding Key="F" Modifiers="Ctrl" Command="{x:Static local:MainWindow.ToggleScaleModeCommand}"/>
 
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
 
         <KeyBinding Key="Z" Modifiers="Ctrl" Command="{x:Static local:MainWindow.UndoCommand}"/>
         <KeyBinding Key="Y" Modifiers="Ctrl" Command="{x:Static local:MainWindow.RedoCommand}"/>
+
+        <KeyBinding Key="M" Modifiers="Ctrl" Command="{x:Static local:MainWindow.OpenSettingsCommand}"/>
+        <KeyBinding Key="M" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.OpenPreferencesCommand}"/>
     </Window.InputBindings>
 
     <Grid>
@@ -50,14 +51,14 @@
                    VerticalAlignment="Center"
                    FontWeight="Bold"
                    Foreground="Green"
-                   Text="Unlocked"/>    
+                   Text="Unlocked"/>
 
                 <Menu DockPanel.Dock="Left"
               Background="White"
               Foreground="Black">
                     <MenuItem Header="File">
                         <MenuItem Header="Open Image (Ctrl + O)" Click="OpenImage_Click"/>
-                        <MenuItem Header="Delete Image (Ctrl + D)" Click="DeleteImage_Click"/>
+                        <MenuItem Header="Delete Image (Ctrl + D)" Click="DeleteBackgroundImageFromCanvas_Click"/>
                     </MenuItem>
 
                     <MenuItem Header="Database">
@@ -67,13 +68,15 @@
 
                     <MenuItem Header="Diagram">
                         <MenuItem x:Name="LockButton" Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
-                        <MenuItem x:Name="EqoDistButton" Header="Equal-Distance (Ctrl + F) -> adjust: (Ctrl J / Ctrl K)" Click="EqoDistButton_Click"/>
+                        <MenuItem x:Name="EqoDistButton" Header="Toggle Scale Mode (Ctrl + F)" Click="ToggleScaleMode_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
                         <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
+                        <MenuItem Header="Diagram Settings... (Ctrl + M)" Click="OpenSettings_Click"/>
+                        <MenuItem Header="Manage Preferences... (Ctrl + Shift + M)" Click="OpenPreferences_Click"/>
                     </MenuItem>
 
                     <MenuItem Header="Interpolation Mode">
-                        <MenuItem Header="Monotone" Click="InterpMode_Click" Tag="Monotone"/>
+                        <MenuItem Header="Monotone"    Click="InterpMode_Click" Tag="Monotone"/>
                         <MenuItem Header="Linear"      Click="InterpMode_Click" Tag="Linear"/>
                         <MenuItem Header="Catmull-Rom" Click="InterpMode_Click" Tag="CatmullRom"/>
                         <MenuItem Header="Lagrange"    Click="InterpMode_Click" Tag="Lagrange"/>
@@ -86,8 +89,8 @@
                 </Menu>
             </DockPanel>
         </Border>
-
-
+        
+        <!-- make DrawingCanvas instance -->
         <local:DrawingCanvas x:Name="drawingCanvas"
                              Grid.Row="1"
                              Background="DimGray"
