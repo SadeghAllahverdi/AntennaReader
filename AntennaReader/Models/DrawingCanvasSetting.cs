@@ -9,7 +9,7 @@ namespace AntennaReader.Models
     /// </summary>
     public class DrawingCanvasSetting
     {
-        // canonical default log contours — used when ContourMode is DefaultLog
+        #region Attributes
         public static readonly IReadOnlyList<double> DefaultLogContours =
             new double[] { 1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 30 };
 
@@ -22,6 +22,7 @@ namespace AntennaReader.Models
         public int CsvExportPrecision { get; set; } = 3;
         public int PATExportPrecision { get; set; } = 3;
         public DateTime LastModified { get; set; } = DateTime.Now;
+        #endregion
 
         #region Helper -> Get Contours
         /// <summary>

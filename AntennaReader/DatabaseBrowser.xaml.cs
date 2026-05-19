@@ -20,9 +20,6 @@ using System.Xml.Linq;
 
 namespace AntennaReader
 {
-    /// <summary>
-    /// Interaction logic for DatabaseBrowser.xaml
-    /// </summary>
     public partial class DatabaseBrowser : Window
     {
         // attributes
@@ -146,12 +143,21 @@ namespace AntennaReader
             // check if list is empty
             if (!selectedDiagrams.Any())
             {
-                MessageBox.Show("Please select at least one diagram to delete", "No Selection", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                MessageBox.Show(
+                    messageBoxText:"Please select at least one diagram to delete", 
+                    caption:"No Selection", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Exclamation);
                 return;
             }
 
             // warn user -> confirm deletion
-            MessageBoxResult confirm = MessageBox.Show($"Deleting {selectedDiagrams.Count} antenna diagrams from SQLite database? \nThis can not be undone!", "confirm deletion", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            MessageBoxResult confirm = MessageBox.Show(
+                messageBoxText:$"Deleting {selectedDiagrams.Count} antenna diagrams from SQLite database? \nThis can not be undone!", 
+                caption:"Confirm Deletion", 
+                button:MessageBoxButton.YesNo, 
+                icon:MessageBoxImage.Warning,
+                defaultResult: MessageBoxResult.No);
             if (confirm != MessageBoxResult.Yes) return;
 
             try
@@ -169,11 +175,19 @@ namespace AntennaReader
                     db.SaveChanges();
                 }
                 LoadDiagrams(); // refresh diagram list
-                MessageBox.Show($"Deleted {selectedDiagrams.Count} diagram(s) from database.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    messageBoxText:$"Deleted {selectedDiagrams.Count} diagram(s) from database.", 
+                    caption:"Success", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to delete diagram(s): {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    messageBoxText:$"Failed to delete diagram(s): {ex.Message}", 
+                    caption:"Error", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Error);
                 return;
             }
         }
@@ -184,7 +198,11 @@ namespace AntennaReader
         {
             if (DiagramList.SelectedItems.Count != 1)
             {
-                MessageBox.Show("Please select exactly ONE antenna diagram to edit.", "Multiple Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    messageBoxText: "Please select exactly one antenna diagram to edit its metadata.",
+                    caption: "Multiple Selection",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Warning);
                 return;
             }
 
@@ -212,10 +230,10 @@ namespace AntennaReader
                     if (nameConflict)
                     {
                         MessageBox.Show(
-                            $"Another antenna with the name '{dlg.antennaName}' already exists. Choose a different name.",
-                            "Name Conflict",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
+                            messageBoxText:$"Another antenna with the name '{dlg.antennaName}' already exists. Choose a different name.",
+                            caption:"Name Conflict",
+                            button:MessageBoxButton.OK,
+                            icon:MessageBoxImage.Warning);
                         return;
                     }
 
@@ -232,11 +250,19 @@ namespace AntennaReader
                 }
 
                 LoadDiagrams();
-                MessageBox.Show($"Antenna '{dlg.antennaName}' updated.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    messageBoxText:$"Antenna '{dlg.antennaName}' updated.",
+                    caption:"Success", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to update diagram: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    messageBoxText:$"Failed to update diagram: {ex.Message}",
+                    caption: "Error",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Error);   
             }
         }
         #endregion
@@ -261,7 +287,11 @@ namespace AntennaReader
             List<AntennaDiagram> selectedDiagrams = GetSelectedDiagrams();
             if (!selectedDiagrams.Any())
             {
-                MessageBox.Show("Please select at least one diagram to export", "No selection", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                MessageBox.Show(
+                    messageBoxText:"Please select at least one diagram to export", 
+                    caption:"No selection", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Exclamation);
                 return;
             }
 
@@ -315,12 +345,20 @@ namespace AntennaReader
                     }
                 }
 
-                MessageBox.Show($"Exported {selectedDiagrams.Count} diagram(s) to CSV \n{AppPaths.ExportFolder}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    messageBoxText:$"Exported {selectedDiagrams.Count} diagram(s) to CSV \n{AppPaths.ExportFolder}",
+                    caption:"Success", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Information);
                 OpenExportFolder();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to export diagram(s) to CSV: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    messageBoxText: $"Failed to export diagram(s) to CSV: {ex.Message}", 
+                    caption:"Error", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Error);
             }
         }
         #endregion
@@ -334,7 +372,11 @@ namespace AntennaReader
             List<AntennaDiagram> selectedDiagrams = GetSelectedDiagrams();
             if (!selectedDiagrams.Any())
             {
-                MessageBox.Show("Please select at least one diagram to export.", "No selection", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                MessageBox.Show(
+                    messageBoxText:"Please select at least one diagram to export.", 
+                    caption:"No selection", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Exclamation);
                 return;
             }
 
@@ -382,12 +424,20 @@ namespace AntennaReader
                     }
                 }
 
-                MessageBox.Show($"Exported {selectedDiagrams.Count} PAT file(s) to \n{AppPaths.ExportFolder}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    messageBoxText:$"Exported {selectedDiagrams.Count} PAT file(s) to \n{AppPaths.ExportFolder}", 
+                    caption:"Success", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Information);
                 OpenExportFolder();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to export PAT files: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    messageBoxText:$"Failed to export PAT files: {ex.Message}", 
+                    caption:"Error", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Error);
             }
         }
         #endregion
@@ -401,7 +451,11 @@ namespace AntennaReader
             // check that only one is selected
             if (DiagramList.SelectedItems.Count != 1)
             {
-                MessageBox.Show("Please select exactly ONE antenna diagram to import.", "Multiple Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    messageBoxText:"Please select exactly one antenna diagram to import.", 
+                    caption:"Multiple Selection", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Warning);
                 return;
             }
 
@@ -409,7 +463,11 @@ namespace AntennaReader
 
             if (selectedDiagram == null)
             {
-                MessageBox.Show("Please select a diagram to import.", "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    messageBoxText:"Please select a diagram to import.", 
+                    caption:"No Selection", 
+                    button:MessageBoxButton.OK, 
+                    icon:MessageBoxImage.Information);
                 return;
             }
 
@@ -419,7 +477,5 @@ namespace AntennaReader
             }
         }
         #endregion
-
-
     }
 }

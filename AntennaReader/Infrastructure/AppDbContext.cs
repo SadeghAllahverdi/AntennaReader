@@ -13,11 +13,12 @@ namespace AntennaReader.Infrastructure
     /// </summary>
     public class AppDbContext : DbContext
     {
-        // Tables
+        #region Tables
         public DbSet<AntennaDiagram> AntennaDiagrams { get; set; } = null!;
         public DbSet<AntennaMeasurement> AntennaMeasurements { get; set; } = null!;
         public DbSet<AntennaInterpolatedMeasurement> AntennaInterpolatedMeasurements { get; set; } = null!;
         public DbSet<DrawingCanvasSetting> DrawingCanvasSettings { get; set; } = null!;
+        #endregion
 
         // initialize sqlite database
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -28,7 +29,7 @@ namespace AntennaReader.Infrastructure
             }
         }
 
-        // relationships
+        #region Relationships between AntennaDiagram, AntennaMeasurement and AntennaInterpolatedMeasurement
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AntennaDiagram>()
@@ -51,7 +52,9 @@ namespace AntennaReader.Infrastructure
                 .HasIndex(m => new { m.AntennaDiagramId, m.Angle })
                 .IsUnique();
         }
+        #endregion
 
+        #region Save DrawingCanvasSetting
         public void SaveDrawingCanvasSetting(string name, DrawingCanvasSetting setting)
         {
             DrawingCanvasSetting? existingSetting = DrawingCanvasSettings.FirstOrDefault(s => s.Name == name);
@@ -73,7 +76,9 @@ namespace AntennaReader.Infrastructure
             }
             SaveChanges();
         }
+        #endregion
 
+        #region Delete DrawingCanvasSetting
         public void DeleteDrawingCanvasSetting(string name)
         {
             DrawingCanvasSetting? existingSetting = DrawingCanvasSettings.FirstOrDefault(s => s.Name == name);
@@ -83,10 +88,13 @@ namespace AntennaReader.Infrastructure
                 SaveChanges();
             }
         }
+        #endregion
 
+        #region Get All DrawingCanvasSettings
         public List<DrawingCanvasSetting> GetAllDCSettings()
         { 
             return DrawingCanvasSettings.OrderBy(s => s.Name).ToList();
         }
+        #endregion
     }
 }

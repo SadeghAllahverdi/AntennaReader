@@ -27,10 +27,10 @@ namespace AntennaReader
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Failed to initialize database: {ex.Message}\n\nDatabase location: {AppPaths.DBPath}",
-                    "Database Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    messageBoxText:$"Failed to initialize database: {ex.Message}\n\nDatabase location: {AppPaths.DBPath}",
+                    caption:"Database Error",
+                    button:MessageBoxButton.OK,
+                    icon:MessageBoxImage.Error);
             }
         }
     }

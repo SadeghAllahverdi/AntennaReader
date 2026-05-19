@@ -8,22 +8,15 @@ using System.Windows;
 namespace AntennaReader.Models
 {
     /// <summary>
-    /// Represents a single measurement from an antenna diagram.
+    /// Represents a single user measurement from an antenna diagram.
     /// </summary>
     public class AntennaMeasurement
     {
-        
-       
         public int Id { get; set; }  // primary key
         public int AntennaDiagramId { get; set; } // foreign key
         public AntennaDiagram Diagram { get; set; } = null!;
-
-        //properties
-        // 1. angle
         public int Angle { get; set; }
-        // 2. db value
         public double DbValue { get; set; }
-        // 3. position
         public double PosX { get; set; }
         public double PosY { get; set; }
     }
