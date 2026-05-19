@@ -1,0 +1,75 @@
+﻿<Window x:Class="AntennaReader.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Diagram Settings"
+        Height="460" Width="440"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Scale Mode" FontWeight="Bold" Margin="0,0,0,6"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
+            <RadioButton x:Name="LogScaleRadio" Content="Logarithmic" Margin="0,0,16,0" Checked="ScaleMode_Changed"/>
+            <RadioButton x:Name="LinearScaleRadio" Content="Equal-Distance" Checked="ScaleMode_Changed"/>
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" Text="dB Range" FontWeight="Bold" Margin="0,0,0,6"/>
+        <Grid Grid.Row="3" Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Lower:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBox Grid.Column="1" x:Name="LowerBoundBox" TextChanged="BoundsTextBox_TextChanged"/>
+            <TextBlock Grid.Column="3" Text="Upper:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBox Grid.Column="4" x:Name="UpperBoundBox" TextChanged="BoundsTextBox_TextChanged"/>
+        </Grid>
+        <TextBlock Grid.Row="4" x:Name="DbHintText"
+                   Foreground="Gray" FontSize="11"
+                   Margin="0,0,0,14"
+                   Text="Log mode forces Lower = 0"/>
+
+        <TextBlock Grid.Row="5" x:Name="ContourStepLabel" Text="Contour Step (Equal-Distance only)" FontWeight="Bold" Margin="0,0,0,6"/>
+        <ComboBox Grid.Row="6" x:Name="ContourStepCombo"
+                  SelectionChanged="ContourStepCombo_SelectionChanged"
+                  Margin="0,0,0,14"/>
+
+        <TextBlock Grid.Row="7" Text="Export Precision" FontWeight="Bold" Margin="0,0,0,6"/>
+        <Grid Grid.Row="8" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="CSV:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox Grid.Column="1" x:Name="CsvPrecisionCombo" SelectionChanged="PrecisionCombo_SelectionChanged"/>
+            <TextBlock Grid.Column="3" Text="PAT:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox Grid.Column="4" x:Name="PatPrecisionCombo" SelectionChanged="PrecisionCombo_SelectionChanged"/>
+        </Grid>
+
+        <StackPanel Grid.Row="10" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Save as Preference..." Width="150" Height="28" Margin="0,0,8,0" Click="SaveAsPreference_Click"/>
+            <Button Content="Cancel" Width="80" Height="28" Margin="0,0,8,0" Click="Cancel_Click"/>
+            <Button Content="Done" Width="80" Height="28" Click="Done_Click" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

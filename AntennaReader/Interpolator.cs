@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using AntennaReader.Models;
 
 namespace AntennaReader
 {
@@ -22,8 +23,9 @@ namespace AntennaReader
         /// Needs at least 2 points to do anything.
         /// </summary>
         public static Dictionary<int, double> Interpolate(
-    Dictionary<int, double> rawClickedPoints,
-    InterpolationMode mode)
+            Dictionary<int, double> rawClickedPoints,
+            InterpolationMode mode,
+            DrawingCanvasSetting setting)
         {
             if (rawClickedPoints == null || rawClickedPoints.Count < 2)
                 return new Dictionary<int, double>();
@@ -81,7 +83,7 @@ namespace AntennaReader
             foreach (var kv in result)
             {
                 int deg = ((kv.Key % 360) + 360) % 360;
-                final[deg] = Math.Clamp(kv.Value, 0.0, 30.0);
+                final[deg] = Math.Clamp(kv.Value, setting.lowerBound, setting.upperBound);
             }
 
             return final;

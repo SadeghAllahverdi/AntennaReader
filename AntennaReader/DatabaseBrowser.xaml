@@ -41,6 +41,12 @@
                   Grid.Row="1"
                   Margin="0,0,0,10"
                   SelectionMode="Extended">
+            <ListView.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Edit Antenna Metadata" Click="Edit_Click"/>
+                    <MenuItem Header="Import to Diagram" Click="Import_Click"/>
+                </ContextMenu>
+            </ListView.ContextMenu>
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="ID" Width="50"

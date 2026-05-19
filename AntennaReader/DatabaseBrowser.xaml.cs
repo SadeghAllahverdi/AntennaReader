@@ -69,19 +69,19 @@ namespace AntennaReader
         /// Filter function for antenna diagrams based on search text box input
         /// </summary>
         private bool DiagramFilter(object row)
-        {   
+        {
             AntennaDiagram? diagram = row as AntennaDiagram;
             if (diagram == null) return false; // row did not cast correctly
 
             string searchText = SearchBar.Text;
             if (string.IsNullOrEmpty(searchText)) return true; // no filter 
 
-            bool nameMatch = diagram.AntennaName !=null && diagram.AntennaName.ToLower().Contains(searchText.ToLower());
+            bool nameMatch = diagram.AntennaName != null && diagram.AntennaName.ToLower().Contains(searchText.ToLower());
             bool ownerMatch = diagram.AntennaOwner != null && diagram.AntennaOwner.ToLower().Contains(searchText.ToLower());
-            bool stateMatch = diagram.State !=null && diagram.State.ToLower().Contains(searchText.ToLower());
-            bool cityMatch = diagram.City !=null && diagram.City.ToLower().Contains(searchText.ToLower());
+            bool stateMatch = diagram.State != null && diagram.State.ToLower().Contains(searchText.ToLower());
+            bool cityMatch = diagram.City != null && diagram.City.ToLower().Contains(searchText.ToLower());
 
-            return nameMatch || ownerMatch ||stateMatch || cityMatch;
+            return nameMatch || ownerMatch || stateMatch || cityMatch;
         }
         #endregion
 
@@ -179,6 +179,68 @@ namespace AntennaReader
         }
         #endregion
 
+        #region Click -> Edit Antenna Metadata
+        private void Edit_Click(object sender, RoutedEventArgs e)
+        {
+            if (DiagramList.SelectedItems.Count != 1)
+            {
+                MessageBox.Show("Please select exactly ONE antenna diagram to edit.", "Multiple Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            AntennaDiagram? selectedDiagram = DiagramList.SelectedItem as AntennaDiagram;
+            if (selectedDiagram == null) return;
+
+            SaveDialog dlg = new SaveDialog(
+                selectedDiagram.AntennaName,
+                selectedDiagram.AntennaOwner,
+                selectedDiagram.State,
+                selectedDiagram.City);
+            dlg.Owner = this;
+
+            bool? result = dlg.ShowDialog();
+            if (result != true) return;
+
+            try
+            {
+                using (AppDbContext db = new AppDbContext())
+                {
+                    bool nameConflict = db.AntennaDiagrams
+                        .Any(d => d.Id != selectedDiagram.Id
+                            && d.AntennaName.ToLower() == dlg.antennaName.ToLower());
+
+                    if (nameConflict)
+                    {
+                        MessageBox.Show(
+                            $"Another antenna with the name '{dlg.antennaName}' already exists. Choose a different name.",
+                            "Name Conflict",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    AntennaDiagram? rowToEdit = db.AntennaDiagrams.FirstOrDefault(d => d.Id == selectedDiagram.Id);
+                    if (rowToEdit != null)
+                    {
+                        rowToEdit.AntennaName = dlg.antennaName;
+                        rowToEdit.AntennaOwner = dlg.owner ?? string.Empty;
+                        rowToEdit.State = dlg.state ?? string.Empty;
+                        rowToEdit.City = dlg.city ?? string.Empty;
+                        rowToEdit.CreateDate = DateTime.Now;
+                        db.SaveChanges();
+                    }
+                }
+
+                LoadDiagrams();
+                MessageBox.Show($"Antenna '{dlg.antennaName}' updated.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to update diagram: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        #endregion
+
         #region Click -> Clear Selection
         ///<summery>
         /// clears selected rows
@@ -201,6 +263,15 @@ namespace AntennaReader
             {
                 MessageBox.Show("Please select at least one diagram to export", "No selection", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
+            }
+
+            // pull active setting from the main window
+            DrawingCanvasSetting activeSetting = new DrawingCanvasSetting();
+            int csvPrecision = 3;
+            if (this.Owner is MainWindow main)
+            {
+                activeSetting = main.drawingCanvas.Setting;
+                csvPrecision = activeSetting.CsvExportPrecision;
             }
 
             string filePath = System.IO.Path.Combine(AppPaths.ExportFolder, "AntennaDiagrams.csv");
@@ -227,16 +298,19 @@ namespace AntennaReader
 
                         Dictionary<int, double> raw = result.Measurements
                             .ToDictionary(m => m.Angle, m => m.DbValue);
-                        Dictionary<int, double> dense = Interpolator.Interpolate(raw, InterpolationMode.Monotone);
+
+                        Dictionary<int, double> dense = Interpolator.Interpolate(
+                            raw,
+                            InterpolationMode.Monotone,
+                            activeSetting
+                        );
 
                         List<string> row = new List<string> { result.AntennaName ?? string.Empty };
-
                         for (int angle = 0; angle < 360; angle++)
                         {
-                            double dbValue = (dense.TryGetValue(angle, out double v) ? v : 0.0);
-                            row.Add($"{dbValue:F3}");
+                            double dbValue = dense.TryGetValue(angle, out double v) ? v : 0.0;
+                            row.Add(dbValue.ToString($"F{csvPrecision}", System.Globalization.CultureInfo.InvariantCulture));
                         }
-
                         writer.WriteLine(string.Join(",", row));
                     }
                 }
@@ -258,11 +332,19 @@ namespace AntennaReader
         private void ExportPAT_Click(object sender, RoutedEventArgs e)
         {
             List<AntennaDiagram> selectedDiagrams = GetSelectedDiagrams();
-
             if (!selectedDiagrams.Any())
             {
                 MessageBox.Show("Please select at least one diagram to export.", "No selection", MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
+            }
+
+            // pull active setting from the main window
+            DrawingCanvasSetting activeSetting = new DrawingCanvasSetting();
+            int patPrecision = 3;
+            if (this.Owner is MainWindow main)
+            {
+                activeSetting = main.drawingCanvas.Setting;
+                patPrecision = activeSetting.PATExportPrecision;
             }
 
             try
@@ -277,7 +359,12 @@ namespace AntennaReader
 
                         Dictionary<int, double> raw = result.Measurements
                             .ToDictionary(m => m.Angle, m => m.DbValue);
-                        Dictionary<int, double> dense = Interpolator.Interpolate(raw, InterpolationMode.Monotone);
+
+                        Dictionary<int, double> dense = Interpolator.Interpolate(
+                            raw,
+                            InterpolationMode.Monotone,
+                            activeSetting
+                        );
 
                         string filename = SafeFileName(result.AntennaName);
                         string filePath = System.IO.Path.Combine(AppPaths.ExportFolder, $"{filename}.PAT");
@@ -285,13 +372,11 @@ namespace AntennaReader
                         using (StreamWriter writer = new StreamWriter(filePath))
                         {
                             writer.WriteLine("'', 0, 2");
-
                             for (int angle = 0; angle < 360; angle++)
                             {
                                 double dbValue = dense.TryGetValue(angle, out double v) ? v : 0.0;
-                                writer.WriteLine($" {angle}, {dbValue:F3}");
+                                writer.WriteLine($" {angle}, {dbValue.ToString($"F{patPrecision}", System.Globalization.CultureInfo.InvariantCulture)}");
                             }
-
                             writer.WriteLine("999");
                         }
                     }
@@ -334,5 +419,7 @@ namespace AntennaReader
             }
         }
         #endregion
+
+
     }
 }
