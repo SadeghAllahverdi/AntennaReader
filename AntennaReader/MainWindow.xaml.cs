@@ -1,6 +1,8 @@
-﻿using AntennaReader.Infrastructure;
+﻿using AntennaReader;
+using AntennaReader.Infrastructure;
 using AntennaReader.Models;
-using AntennaReader;
+using AntennaReader.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Win32;
 using System.IO;
 using System.Text;
@@ -13,7 +15,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Microsoft.EntityFrameworkCore;
 
 
 namespace AntennaReader
@@ -31,6 +32,8 @@ namespace AntennaReader
         public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
 
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
+        public static RoutedUICommand AutoExtractCurveCommand = new RoutedUICommand();
+        public static RoutedUICommand AutoExtractCurveDebugCommand = new RoutedUICommand();
         public static RoutedUICommand ToggleScaleModeCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
@@ -54,6 +57,8 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
 
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
+            CommandBindings.Add(new CommandBinding(AutoExtractCurveCommand, AutoExtractCurve_Click));
+            CommandBindings.Add(new CommandBinding(AutoExtractCurveDebugCommand, AutoExtractCurveDebug_Click));
             CommandBindings.Add(new CommandBinding(ToggleScaleModeCommand, ToggleScaleMode_Click));
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
@@ -125,6 +130,62 @@ namespace AntennaReader
             if (result == MessageBoxResult.Yes)
             {
                 drawingCanvas.DeleteBackgroundImage();
+            }
+        }
+        #endregion
+
+        #region Click -> Open Image Folders
+        /// <summary>
+        /// Opens the application's Image folder in Windows Explorer.
+        /// </summary>
+        private void OpenImageFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Directory.CreateDirectory(AppPaths.ImageFolder);
+                System.Diagnostics.Process.Start("explorer.exe", AppPaths.ImageFolder);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not open image folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        #endregion
+
+        #region Click -> Open Debug Folder
+        /// <summary>
+        /// Opens the application's OpenCV Debug folder in Windows Explorer.
+        /// </summary>
+        private void OpenDebugFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Directory.CreateDirectory(AppPaths.DebugFolder);
+                System.Diagnostics.Process.Start("explorer.exe", AppPaths.DebugFolder);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not open debug folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        #endregion
+        
+        #region Click -> Open Export Folder
+        /// <summary>
+        /// Opens the application's Extract/Export data folder in Windows Explorer.
+        /// </summary>
+        private void OpenExportFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // NOTE: If your AppPaths folder uses a slightly different name 
+                // (like ExportFolder), change ".ExtractFolder" here to match it!
+                Directory.CreateDirectory(AppPaths.ExportFolder);
+                System.Diagnostics.Process.Start("explorer.exe", AppPaths.ExportFolder);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not open extract folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         #endregion
@@ -343,6 +404,110 @@ namespace AntennaReader
             LockButton.Header = drawingCanvas.IsLocked ? "Unlock (Ctrl + L)" : "Lock (Ctrl + L)";
             LockStatusText.Foreground = drawingCanvas.IsLocked ? Brushes.DarkRed : Brushes.Green;
             LockStatusText.Text = drawingCanvas.IsLocked ? "Locked" : "Unlocked";
+        }
+        #endregion
+
+        #region Click -> Auto Extract Curve
+        /// <summary>
+        /// Calls the DiagramDetectionService to automatically extract the antenna curve
+        /// from the locked bounding box using the IP+MBTA algorithm.
+        /// </summary>
+        private void AutoExtractCurve_Click(object sender, RoutedEventArgs e)
+        {
+            // check if diagram has bg image
+            if (!drawingCanvas.HasBackgroundImage)
+            {
+                MessageBox.Show(
+                    messageBoxText:"Please load a background image first.",
+                    caption:"Missing Image",
+                    button:MessageBoxButton.OK,
+                    icon:MessageBoxImage.Warning);
+                return;
+            }
+            // check if diagram is drawn and is locked
+            if (!drawingCanvas.HasDiagram || !drawingCanvas.IsLocked)
+            {
+                MessageBox.Show(
+                    messageBoxText:"Please draw a bounding rectangle around the diagram and Lock it (Ctrl+L) before extracting.",
+                    caption:"Diagram Not Locked",
+                    button:MessageBoxButton.OK,
+                    icon:MessageBoxImage.Information);
+                return;
+            }
+
+            // call service to extract 
+            try
+            {
+                Dictionary<int, double> extractedData = DiagramDetectionService.ExtractCurve(drawingCanvas);
+                if (extractedData != null && extractedData.Count > 0)
+                {
+                    drawingCanvas.SetMeasurements(extractedData);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        messageBoxText:"Could not extract a valid curve. Try adjusting the bounding box.",
+                        caption:"Extraction Failed",
+                        button:MessageBoxButton.OK,
+                        icon:MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    messageBoxText:$"Error extracting curve: {ex.Message}",
+                    caption:"Extraction Error",
+                    button:MessageBoxButton.OK,
+                    icon:MessageBoxImage.Error);
+            }
+        }
+        #endregion
+
+        #region Click -> Auto Extract Curve Debug
+        private void AutoExtractCurveDebug_Click(object sender, RoutedEventArgs e)
+        {
+            if (!drawingCanvas.HasBackgroundImage)
+            {
+                MessageBox.Show(
+                    messageBoxText: "Please load a background image first.",
+                    caption: "Missing Image",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Warning);
+                return;
+            }
+            if (!drawingCanvas.HasDiagram || !drawingCanvas.IsLocked)
+            {
+                MessageBox.Show(
+                    messageBoxText: "Please draw a bounding rectangle around the diagram and Lock it (Ctrl+L) before extracting.",
+                    caption: "Diagram Not Locked",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Information);
+                return;
+            }
+            try
+            {
+                Dictionary<int, double> extractedData = DiagramDetectionService.ExtractCurve(drawingCanvas, true);
+                if (extractedData != null && extractedData.Count > 0)
+                {
+                    drawingCanvas.SetMeasurements(extractedData);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        messageBoxText: "Could not extract a valid curve. Try adjusting the bounding box.",
+                        caption: "Extraction Failed",
+                        button: MessageBoxButton.OK,
+                        icon: MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    messageBoxText: $"Error extracting curve: {ex.Message}",
+                    caption: "Extraction Error",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Error);
+            }
         }
         #endregion
 

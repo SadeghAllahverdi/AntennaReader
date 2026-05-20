@@ -34,6 +34,11 @@ namespace AntennaReader.Infrastructure
             "Exports"
         );
 
+        public static string DebugFolder => System.IO.Path.Combine(
+            BaseFolder,
+            "Debug"
+        );
+
         public static void EnsureFolderExists ()
         {
             if ( !Directory.Exists( BaseFolder ) )
@@ -47,6 +52,10 @@ namespace AntennaReader.Infrastructure
             if ( !Directory.Exists( ExportFolder ) )
             {
                 Directory.CreateDirectory( ExportFolder );
+            }
+            if ( !Directory.Exists( DebugFolder ) )
+            {
+                Directory.CreateDirectory( DebugFolder );
             }
         }  
     }
