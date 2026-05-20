@@ -551,7 +551,7 @@ namespace AntennaReader
 
             foreach (KeyValuePair<int, (double, Point)> entry in this.measurements)
             {
-                dc.DrawEllipse(fillColor, strokePen, entry.Value.Item2, 3, 3);
+                dc.DrawEllipse(fillColor, strokePen, entry.Value.Item2, 2, 2);
             }
 
 
@@ -589,7 +589,7 @@ namespace AntennaReader
         #endregion
 
         #region Helper Function (dB From Distance)
-        private double DbFromDistance(double normalizedDistance)
+        public double DbFromDistance(double normalizedDistance)
         {
             normalizedDistance = Math.Clamp(normalizedDistance, 0.0, 1.0);
             if (!Setting.IsLogScale)

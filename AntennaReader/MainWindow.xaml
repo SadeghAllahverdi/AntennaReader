@@ -19,6 +19,9 @@
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
         <KeyBinding Key="F" Modifiers="Ctrl" Command="{x:Static local:MainWindow.ToggleScaleModeCommand}"/>
 
+        <KeyBinding Key="H" Modifiers="Ctrl" Command="{x:Static local:MainWindow.AutoExtractCurveCommand}"/>
+        <KeyBinding Key="H" Modifiers="Ctrl+Alt" Command="{x:Static local:MainWindow.AutoExtractCurveDebugCommand}"/>
+
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
 
@@ -59,6 +62,10 @@
                     <MenuItem Header="File">
                         <MenuItem Header="Open Image (Ctrl + O)" Click="OpenImage_Click"/>
                         <MenuItem Header="Delete Image (Ctrl + D)" Click="DeleteBackgroundImageFromCanvas_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Open Image Folder" Click="OpenImageFolder_Click"/>
+                        <MenuItem Header="Open Debug Folder" Click="OpenDebugFolder_Click"/>
+                        <MenuItem Header="Open Extract Folder" Click="OpenExportFolder_Click"/>
                     </MenuItem>
 
                     <MenuItem Header="Database">
@@ -68,6 +75,8 @@
 
                     <MenuItem Header="Diagram">
                         <MenuItem x:Name="LockButton" Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
+                        <MenuItem Header="Auto Extract Curve (Ctrl + H)" Click="AutoExtractCurve_Click"/>
+                        <MenuItem Header="Auto Extract Curve (Ctrl + Alt + H)" Click="AutoExtractCurveDebug_Click"/>
                         <MenuItem x:Name="EqoDistButton" Header="Toggle Scale Mode (Ctrl + F)" Click="ToggleScaleMode_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
                         <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
@@ -90,7 +99,6 @@
             </DockPanel>
         </Border>
         
-        <!-- make DrawingCanvas instance -->
         <local:DrawingCanvas x:Name="drawingCanvas"
                              Grid.Row="1"
                              Background="DimGray"
