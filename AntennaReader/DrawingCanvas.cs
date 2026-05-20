@@ -283,6 +283,7 @@ namespace AntennaReader
                 this._isResizing = false;
                 this._isDrawing = true;
                 this._startPoint = pos; // set start point of diagram
+                this._endPoint = pos;
                 return;
             }
         }
