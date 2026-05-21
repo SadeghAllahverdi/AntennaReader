@@ -28,6 +28,8 @@ namespace AntennaReader
         private DrawingCanvasSetting originalSetting;
         private bool isInitializing = true;
         public event Action<DrawingCanvasSetting>? SettingChanged;
+
+        private System.Windows.Threading.DispatcherTimer _debounceTimer;
         #endregion
 
         #region Constructor
@@ -36,6 +38,14 @@ namespace AntennaReader
             InitializeComponent();
             currentSetting = setting.Clone();
             originalSetting = setting.Clone();
+
+            _debounceTimer = new System.Windows.Threading.DispatcherTimer();
+            _debounceTimer.Interval = TimeSpan.FromMilliseconds(2000); // Wait 2s after last keystroke
+            _debounceTimer.Tick += (s, args) =>
+            {
+                _debounceTimer.Stop(); // Stop the timer
+                NotifyCanvas();        // Tell the canvas to run the math and redraw!
+            };
 
             SyncUiFromSetting();
             isInitializing = false;
@@ -63,6 +73,12 @@ namespace AntennaReader
             bool isEqualDistance = !currentSetting.IsLogScale;
             ContourStepLabel.IsEnabled = isEqualDistance;
             ContourStepCombo.IsEnabled = isEqualDistance;
+
+            SatThreshBox.Text = currentSetting.ImageSaturationThreshold.ToString(CultureInfo.InvariantCulture);
+            DarkThreshBox.Text = currentSetting.ImageDarkThreshold.ToString(CultureInfo.InvariantCulture);
+            HarmonicsBox.Text = currentSetting.FourierHarmonics.ToString(CultureInfo.InvariantCulture);
+            DpEpsilonBox.Text = currentSetting.DpEpsilon.ToString(CultureInfo.InvariantCulture);
+            DpSyncBox.Text = currentSetting.DpSyncInterval.ToString(CultureInfo.InvariantCulture);
 
             FillContourStepCombo();
             FillPrecisionCombos();
@@ -226,6 +242,32 @@ namespace AntennaReader
         }
         #endregion
 
+        #region Event -> Tuning Text Changed
+        /// <summary>
+        /// safely parses user input for algorithm tuning without crashing on letters
+        /// </summary>
+        private void TuningTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isInitializing) return;
+
+            // safely parse whole numbers (integers)
+            if (int.TryParse(SatThreshBox.Text, out int sat)) currentSetting.ImageSaturationThreshold = sat;
+            if (int.TryParse(DarkThreshBox.Text, out int dark)) currentSetting.ImageDarkThreshold = dark;
+            if (int.TryParse(HarmonicsBox.Text, out int harmonics)) currentSetting.FourierHarmonics = harmonics;
+            if (int.TryParse(DpSyncBox.Text, out int sync)) currentSetting.DpSyncInterval = sync;
+
+            // safely parse decimals (like 1.8 for DP Epsilon)
+            if (double.TryParse(DpEpsilonBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double eps))
+            {
+                currentSetting.DpEpsilon = eps;
+            }
+
+            // Instead of running the math instantly, restart the stopwatch!
+            _debounceTimer.Stop();
+            _debounceTimer.Start();
+        }
+        #endregion
+
         #region Click -> Save as Preference
         /// <summary>
         /// asks for a name, then saves the current setting as a named preference in the database
@@ -273,6 +315,18 @@ namespace AntennaReader
             currentSetting = originalSetting.Clone();
             NotifyCanvas();
             this.DialogResult = false;
+        }
+        #endregion
+
+        #region Helper Functions for Inline Error
+        public void ShowInlineError()
+        {
+            InlineErrorLabel.Visibility = Visibility.Visible;
+        }
+
+        public void HideInlineError()
+        {
+            InlineErrorLabel.Visibility = Visibility.Collapsed;
         }
         #endregion
     }

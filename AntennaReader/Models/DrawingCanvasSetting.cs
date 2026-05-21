@@ -22,6 +22,12 @@ namespace AntennaReader.Models
         public int CsvExportPrecision { get; set; } = 3;
         public int PATExportPrecision { get; set; } = 3;
         public DateTime LastModified { get; set; } = DateTime.Now;
+
+        public int FourierHarmonics { get; set; } = 10;
+        public int ImageSaturationThreshold { get; set; } = 40;
+        public int ImageDarkThreshold { get; set; } = 100;
+        public double DpEpsilon { get; set; } = 1.8;         
+        public int DpSyncInterval { get; set; } = 30;
         #endregion
 
         #region Helper -> Get Contours
@@ -88,7 +94,14 @@ namespace AntennaReader.Models
                 ContourStep = this.ContourStep,
                 CsvExportPrecision = this.CsvExportPrecision,
                 PATExportPrecision = this.PATExportPrecision,
-                LastModified = this.LastModified
+                LastModified = this.LastModified,
+
+                ImageSaturationThreshold = this.ImageSaturationThreshold,
+                ImageDarkThreshold = this.ImageDarkThreshold,
+                FourierHarmonics = this.FourierHarmonics,
+
+                DpEpsilon = this.DpEpsilon,
+                DpSyncInterval = this.DpSyncInterval
             };
         }
         #endregion

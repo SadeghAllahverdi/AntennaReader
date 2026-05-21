@@ -2,7 +2,6 @@
 using AntennaReader.Models;
 using System;
 using System.Linq;
-using System.Security.Cryptography.Xml;
 using System.Windows;
 
 namespace AntennaReader

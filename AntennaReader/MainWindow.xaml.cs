@@ -4,7 +4,10 @@ using AntennaReader.Models;
 using AntennaReader.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,6 +27,11 @@ namespace AntennaReader
     /// </summary>
     public partial class MainWindow : Window
     {
+        #region Attributes
+        // NEW: Memory to track which algorithm the user ran last so the live-tuning knows what to recalculate
+        private Func<DrawingCanvas, bool, Dictionary<int, double>>? _lastUsedAlgorithm = null;
+        #endregion
+
         #region Command Bindings
         public static RoutedUICommand OpenImageCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteBackgroundImageFromCanvasCommand = new RoutedUICommand();
@@ -32,8 +40,12 @@ namespace AntennaReader
         public static RoutedUICommand OpenDBCommand = new RoutedUICommand();
 
         public static RoutedUICommand LockDiagramCommand = new RoutedUICommand();
-        public static RoutedUICommand AutoExtractCurveCommand = new RoutedUICommand();
-        public static RoutedUICommand AutoExtractCurveDebugCommand = new RoutedUICommand();
+
+        public static RoutedUICommand AutoExtractCurveSPCommand = new RoutedUICommand();
+        public static RoutedUICommand AutoExtractCurveSPDebugCommand = new RoutedUICommand();
+        public static RoutedUICommand AutoExtractCurveFourierCommand = new RoutedUICommand();
+        public static RoutedUICommand AutoExtractCurveFourierDebugCommand = new RoutedUICommand();
+
         public static RoutedUICommand ToggleScaleModeCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
         public static RoutedUICommand DeletePointsCommand = new RoutedUICommand();
@@ -57,8 +69,12 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(OpenDBCommand, OpenDB_Click));
 
             CommandBindings.Add(new CommandBinding(LockDiagramCommand, LockDiagram_Click));
-            CommandBindings.Add(new CommandBinding(AutoExtractCurveCommand, AutoExtractCurve_Click));
-            CommandBindings.Add(new CommandBinding(AutoExtractCurveDebugCommand, AutoExtractCurveDebug_Click));
+
+            CommandBindings.Add(new CommandBinding(AutoExtractCurveSPCommand, AutoExtractCurveSP_Click));
+            CommandBindings.Add(new CommandBinding(AutoExtractCurveSPDebugCommand, AutoExtractCurveSPDebug_Click));
+            CommandBindings.Add(new CommandBinding(AutoExtractCurveFourierCommand, AutoExtractCurveFourier_Click));
+            CommandBindings.Add(new CommandBinding(AutoExtractCurveFourierDebugCommand, AutoExtractCurveFourierDebug_Click));
+
             CommandBindings.Add(new CommandBinding(ToggleScaleModeCommand, ToggleScaleMode_Click));
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
@@ -169,7 +185,7 @@ namespace AntennaReader
             }
         }
         #endregion
-        
+
         #region Click -> Open Export Folder
         /// <summary>
         /// Opens the application's Extract/Export data folder in Windows Explorer.
@@ -178,14 +194,12 @@ namespace AntennaReader
         {
             try
             {
-                // NOTE: If your AppPaths folder uses a slightly different name 
-                // (like ExportFolder), change ".ExtractFolder" here to match it!
                 Directory.CreateDirectory(AppPaths.ExportFolder);
                 System.Diagnostics.Process.Start("explorer.exe", AppPaths.ExportFolder);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Could not open extract folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Could not open export folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         #endregion
@@ -213,7 +227,7 @@ namespace AntennaReader
         private void SaveDB_Click(object sender, RoutedEventArgs e)
         {
             // check if user has meaured at least 2 points
-            if (drawingCanvas.measurements.Count < 2) 
+            if (drawingCanvas.measurements.Count < 2)
             {
                 MessageBox.Show(
                     messageBoxText: "Please measure at least 2 points before saving.",
@@ -345,10 +359,10 @@ namespace AntennaReader
                 if (diagram == null)
                 {
                     MessageBox.Show(
-                        messageBoxText:"Something went wrong. the chosen diagram is not found in database!", 
-                        caption:"Error", 
-                        button:MessageBoxButton.OK, 
-                        icon:MessageBoxImage.Error);
+                        messageBoxText: "Something went wrong. the chosen diagram is not found in database!",
+                        caption: "Error",
+                        button: MessageBoxButton.OK,
+                        icon: MessageBoxImage.Error);
                     return;
                 }
 
@@ -361,10 +375,10 @@ namespace AntennaReader
                 if (!drawingCanvas.SetMeasurements(measurements))
                 {
                     MessageBox.Show(
-                        messageBoxText:"Error importing measurements from database.", 
-                        caption:"Error", 
-                        button:MessageBoxButton.OK, 
-                        icon:MessageBoxImage.Error);
+                        messageBoxText: "Error importing measurements from database.",
+                        caption: "Error",
+                        button: MessageBoxButton.OK,
+                        icon: MessageBoxImage.Error);
                     return;
                 }
 
@@ -388,6 +402,9 @@ namespace AntennaReader
             drawingCanvas.DeleteDiagram();
             LockStatusText.Foreground = Brushes.Green;
             LockStatusText.Text = "Unlocked";
+
+            // Clear algorithm memory if diagram is wiped
+            _lastUsedAlgorithm = null;
         }
         #endregion
 
@@ -407,65 +424,35 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Auto Extract Curve
-        /// <summary>
-        /// Calls the DiagramDetectionService to automatically extract the antenna curve
-        /// from the locked bounding box using the IP+MBTA algorithm.
-        /// </summary>
-        private void AutoExtractCurve_Click(object sender, RoutedEventArgs e)
+        #region Click -> Auto Extract Curves (SP & Fourier)
+        private void AutoExtractCurveSP_Click(object sender, RoutedEventArgs e)
         {
-            // check if diagram has bg image
-            if (!drawingCanvas.HasBackgroundImage)
-            {
-                MessageBox.Show(
-                    messageBoxText:"Please load a background image first.",
-                    caption:"Missing Image",
-                    button:MessageBoxButton.OK,
-                    icon:MessageBoxImage.Warning);
-                return;
-            }
-            // check if diagram is drawn and is locked
-            if (!drawingCanvas.HasDiagram || !drawingCanvas.IsLocked)
-            {
-                MessageBox.Show(
-                    messageBoxText:"Please draw a bounding rectangle around the diagram and Lock it (Ctrl+L) before extracting.",
-                    caption:"Diagram Not Locked",
-                    button:MessageBoxButton.OK,
-                    icon:MessageBoxImage.Information);
-                return;
-            }
+            PerformCurveExtraction(DiagramDetectionServiceDP.ExtractCurve, false);
+        }
 
-            // call service to extract 
-            try
-            {
-                Dictionary<int, double> extractedData = DiagramDetectionService.ExtractCurve(drawingCanvas);
-                if (extractedData != null && extractedData.Count > 0)
-                {
-                    drawingCanvas.SetMeasurements(extractedData);
-                }
-                else
-                {
-                    MessageBox.Show(
-                        messageBoxText:"Could not extract a valid curve. Try adjusting the bounding box.",
-                        caption:"Extraction Failed",
-                        button:MessageBoxButton.OK,
-                        icon:MessageBoxImage.Warning);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    messageBoxText:$"Error extracting curve: {ex.Message}",
-                    caption:"Extraction Error",
-                    button:MessageBoxButton.OK,
-                    icon:MessageBoxImage.Error);
-            }
+        private void AutoExtractCurveSPDebug_Click(object sender, RoutedEventArgs e)
+        {
+            PerformCurveExtraction(DiagramDetectionServiceDP.ExtractCurve, true);
+        }
+        private void AutoExtractCurveFourier_Click(object sender, RoutedEventArgs e)
+        {
+            PerformCurveExtraction(DiagramDetectionServiceFA.ExtractCurve, false);
+        }
+
+        private void AutoExtractCurveFourierDebug_Click(object sender, RoutedEventArgs e)
+        {
+            PerformCurveExtraction(DiagramDetectionServiceFA.ExtractCurve, true);
         }
         #endregion
 
-        #region Click -> Auto Extract Curve Debug
-        private void AutoExtractCurveDebug_Click(object sender, RoutedEventArgs e)
+        #region Helper Function -> Perform Curve Extraction (SP or Fourier)
+        /// <summary>
+        /// Calls the Service to automatically extract the antenna curve
+        /// from the locked bounding box using the IP+MBTA algorithm.
+        /// </summary>
+        private void PerformCurveExtraction(Func<DrawingCanvas, bool, Dictionary<int, double>> extractionAlgorithm, bool isDebug)
         {
+            // check if diagram has bg image
             if (!drawingCanvas.HasBackgroundImage)
             {
                 MessageBox.Show(
@@ -475,6 +462,8 @@ namespace AntennaReader
                     icon: MessageBoxImage.Warning);
                 return;
             }
+
+            // check if diagram is drawn and is locked
             if (!drawingCanvas.HasDiagram || !drawingCanvas.IsLocked)
             {
                 MessageBox.Show(
@@ -484,12 +473,24 @@ namespace AntennaReader
                     icon: MessageBoxImage.Information);
                 return;
             }
+
+            // call service to extract 
             try
             {
-                Dictionary<int, double> extractedData = DiagramDetectionService.ExtractCurve(drawingCanvas, true);
+                Dictionary<int, double> extractedData = extractionAlgorithm(drawingCanvas, isDebug);
+
                 if (extractedData != null && extractedData.Count > 0)
                 {
                     drawingCanvas.SetMeasurements(extractedData);
+
+                    // NEW: Remember this algorithm so the Settings live-tuning knows what to run!
+                    _lastUsedAlgorithm = extractionAlgorithm;
+
+                    if (isDebug)
+                    {
+                        MessageBox.Show("Debug images successfully dumped to your debug folder!",
+                                        "Debug Mode", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 }
                 else
                 {
@@ -519,6 +520,7 @@ namespace AntennaReader
                 return;
             }
             drawingCanvas.DeleteMeasurements();
+            _lastUsedAlgorithm = null; // Clear memory if user trashes the points
         }
         #endregion
 
@@ -564,19 +566,68 @@ namespace AntennaReader
         /// <param name="e"></param>
         private void OpenSettings_Click(object sender, RoutedEventArgs e)
         {
-            // clone the current settig
+            // save the current setting so we can revert
             DrawingCanvasSetting settingBeforeOpen = drawingCanvas.Setting.Clone();
+            // create settings window
             SettingsWindow settingsWindow = new SettingsWindow(drawingCanvas.Setting);
             settingsWindow.Owner = this;
-            settingsWindow.SettingChanged += s => drawingCanvas.ApplySetting(s.Clone());
-
+            // set up listen to trigger and apply updates
+            settingsWindow.SettingChanged += (setting) => SettingsWindow_LiveTuningUpdate(settingsWindow, setting);
             bool? result = settingsWindow.ShowDialog();
+
+            // If user clicked cancel, revert everything
             if (result != true)
             {
-                // user cancelled — revert canvas to what it was before
-                drawingCanvas.ApplySetting(settingBeforeOpen);
+                RevertCanvasSettings(settingBeforeOpen);
             }
             drawingCanvas.Focus();
+        }
+        #endregion
+
+        #region Helper Function -> Live Tuning Update from Settings Window
+        private void SettingsWindow_LiveTuningUpdate(SettingsWindow window, DrawingCanvasSetting newSetting)
+        {
+            // update drawing canvas visuals first
+            drawingCanvas.ApplySetting(newSetting.Clone());
+
+            // Only run the fourier and DP algorithms if it's completely safe
+            bool isReadyForMath = drawingCanvas.HasBackgroundImage && drawingCanvas.HasDiagram && drawingCanvas.IsLocked;
+
+            if (isReadyForMath && _lastUsedAlgorithm != null)
+            {
+                try
+                {
+                    Dictionary<int, double> extractedData = _lastUsedAlgorithm(drawingCanvas, false);
+                    if (extractedData != null && extractedData.Count > 0)
+                    {
+                        drawingCanvas.SetMeasurements(extractedData);
+                        window.HideInlineError(); // Math worked, hide the warning!
+                    }
+                }
+                catch
+                {
+                    window.ShowInlineError(); // Math failed, turn on the orange warning!
+                }
+            }
+        }
+        #endregion
+
+        #region Helper Function -> Revert Canvas Settings
+        private void RevertCanvasSettings(DrawingCanvasSetting originalSetting)
+        {
+            // Put the old rings back
+            drawingCanvas.ApplySetting(originalSetting);
+
+            // Put the old curve back if we can
+            bool isReadyForMath = drawingCanvas.HasBackgroundImage && drawingCanvas.HasDiagram && drawingCanvas.IsLocked;
+            if (isReadyForMath && _lastUsedAlgorithm != null)
+            {
+                try
+                {
+                    drawingCanvas.SetMeasurements(_lastUsedAlgorithm(drawingCanvas, false));
+                }
+                catch { }
+            }
         }
         #endregion
 

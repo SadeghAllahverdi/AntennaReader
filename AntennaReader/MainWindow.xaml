@@ -19,8 +19,10 @@
         <KeyBinding Key="L" Modifiers="Ctrl" Command="{x:Static local:MainWindow.LockDiagramCommand}"/>
         <KeyBinding Key="F" Modifiers="Ctrl" Command="{x:Static local:MainWindow.ToggleScaleModeCommand}"/>
 
-        <KeyBinding Key="H" Modifiers="Ctrl" Command="{x:Static local:MainWindow.AutoExtractCurveCommand}"/>
-        <KeyBinding Key="H" Modifiers="Ctrl+Alt" Command="{x:Static local:MainWindow.AutoExtractCurveDebugCommand}"/>
+        <KeyBinding Key="H" Modifiers="Ctrl" Command="{x:Static local:MainWindow.AutoExtractCurveSPCommand}"/>
+        <KeyBinding Key="H" Modifiers="Ctrl+Alt" Command="{x:Static local:MainWindow.AutoExtractCurveSPDebugCommand}"/>
+        <KeyBinding Key="J" Modifiers="Ctrl" Command="{x:Static local:MainWindow.AutoExtractCurveFourierCommand}"/>
+        <KeyBinding Key="J" Modifiers="Ctrl+Alt" Command="{x:Static local:MainWindow.AutoExtractCurveFourierDebugCommand}"/>
 
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
@@ -75,8 +77,12 @@
 
                     <MenuItem Header="Diagram">
                         <MenuItem x:Name="LockButton" Header="Lock (Ctrl + L)" Click="LockDiagram_Click"/>
-                        <MenuItem Header="Auto Extract Curve (Ctrl + H)" Click="AutoExtractCurve_Click"/>
-                        <MenuItem Header="Auto Extract Curve (Ctrl + Alt + H)" Click="AutoExtractCurveDebug_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Auto Extract Curve (Ctrl + H)" Click="AutoExtractCurveSP_Click"/>
+                        <MenuItem Header="Auto Extract Curve (Ctrl + Alt + H)" Click="AutoExtractCurveSPDebug_Click"/>
+                        <MenuItem Header="Auto Extract Curve (Ctrl + J)" Click="AutoExtractCurveFourier_Click"/>
+                        <MenuItem Header="Auto Extract Curve (Ctrl + Alt + J)" Click="AutoExtractCurveFourierDebug_Click"/>
+                        <Separator/>
                         <MenuItem x:Name="EqoDistButton" Header="Toggle Scale Mode (Ctrl + F)" Click="ToggleScaleMode_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
                         <MenuItem Header="Delete All Points (Ctrl + Shift + P)" Click="DeletePoints_Click"/>
