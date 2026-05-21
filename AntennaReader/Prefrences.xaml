@@ -28,6 +28,13 @@
                 <DataGridTextColumn Header="Lower" Binding="{Binding lowerBound}" Width="*"/>
                 <DataGridTextColumn Header="Upper" Binding="{Binding upperBound}" Width="*"/>
                 <DataGridTextColumn Header="Step" Binding="{Binding ContourStep}" Width="*"/>
+
+                <DataGridTextColumn Header="Sat Thresh" Binding="{Binding ImageSaturationThreshold}" Width="*"/>
+                <DataGridTextColumn Header="Dark Thresh" Binding="{Binding ImageDarkThreshold}" Width="*"/>
+                <DataGridTextColumn Header="Harmonics" Binding="{Binding FourierHarmonics}" Width="*"/>
+                <DataGridTextColumn Header="DP Eps" Binding="{Binding DpEpsilon}" Width="*"/>
+                <DataGridTextColumn Header="DP Sync" Binding="{Binding DpSyncInterval}" Width="*"/>
+
                 <DataGridTextColumn Header="Modified" Binding="{Binding LastModified}" Width="2*"/>
             </DataGrid.Columns>
         </DataGrid>
