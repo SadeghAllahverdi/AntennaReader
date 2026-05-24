@@ -29,6 +29,12 @@ namespace AntennaReader.Infrastructure
             BaseFolder,
             "Images"
         );
+
+        public static string MLFolder => System.IO.Path.Combine(
+            ImageFolder,
+            "ML"
+            );
+
         public static string ExportFolder => System.IO.Path.Combine(
             BaseFolder,
             "Exports"
@@ -39,6 +45,7 @@ namespace AntennaReader.Infrastructure
             "Debug"
         );
 
+
         public static void EnsureFolderExists ()
         {
             if ( !Directory.Exists( BaseFolder ) )
@@ -48,6 +55,10 @@ namespace AntennaReader.Infrastructure
             if ( !Directory.Exists( ImageFolder ) )
             {
                 Directory.CreateDirectory( ImageFolder );
+            }
+            if (!Directory.Exists( MLFolder ))
+            {
+                Directory.CreateDirectory( MLFolder );
             }
             if ( !Directory.Exists( ExportFolder ) )
             {

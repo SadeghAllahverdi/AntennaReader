@@ -30,6 +30,7 @@ namespace AntennaReader
         #region Attributes
         // NEW: Memory to track which algorithm the user ran last so the live-tuning knows what to recalculate
         private Func<DrawingCanvas, bool, Dictionary<int, double>>? _lastUsedAlgorithm = null;
+        private string? _currentImagePath = null;
         #endregion
 
         #region Command Bindings
@@ -45,6 +46,8 @@ namespace AntennaReader
         public static RoutedUICommand AutoExtractCurveSPDebugCommand = new RoutedUICommand();
         public static RoutedUICommand AutoExtractCurveFourierCommand = new RoutedUICommand();
         public static RoutedUICommand AutoExtractCurveFourierDebugCommand = new RoutedUICommand();
+
+        public static RoutedUICommand LabelForMLCommand = new RoutedUICommand();
 
         public static RoutedUICommand ToggleScaleModeCommand = new RoutedUICommand();
         public static RoutedUICommand DeleteDiagramCommand = new RoutedUICommand();
@@ -75,6 +78,8 @@ namespace AntennaReader
             CommandBindings.Add(new CommandBinding(AutoExtractCurveFourierCommand, AutoExtractCurveFourier_Click));
             CommandBindings.Add(new CommandBinding(AutoExtractCurveFourierDebugCommand, AutoExtractCurveFourierDebug_Click));
 
+            CommandBindings.Add(new CommandBinding(LabelForMLCommand, LabelForML_Click));
+
             CommandBindings.Add(new CommandBinding(ToggleScaleModeCommand, ToggleScaleMode_Click));
             CommandBindings.Add(new CommandBinding(DeleteDiagramCommand, DeleteDiagram_Click));
             CommandBindings.Add(new CommandBinding(DeletePointsCommand, DeletePoints_Click));
@@ -87,7 +92,7 @@ namespace AntennaReader
         }
         #endregion
 
-        #region Click -> Open Image Folder
+        #region Click -> Open Image
         /// <summary>
         /// opens the image folder
         /// </summary>
@@ -109,9 +114,11 @@ namespace AntennaReader
                 try
                 {
                     drawingCanvas.SetBackgroundImage(filePath);
+                    _currentImagePath = filePath;
                 }
                 catch (Exception ex)
                 {
+                    _currentImagePath = null;
                     MessageBox.Show(
                         messageBoxText: $"Failed to load image: {ex.Message}",
                         caption: "Error",
@@ -698,5 +705,84 @@ namespace AntennaReader
             }
         }
         #endregion
+
+        #region Click Label for ML
+        private void LabelForML_Click(object sender, RoutedEventArgs e)
+        {
+            // check if bg image has been loaded or if the path to the current image still exists.
+            if (string.IsNullOrEmpty(_currentImagePath) || !System.IO.File.Exists(_currentImagePath))
+            {
+                MessageBox.Show(
+                    messageBoxText: "No image Loaded",
+                    caption: "Label Failure",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Warning);
+                return;
+            }
+            if (!drawingCanvas.HasBackgroundImage || !drawingCanvas.HasDiagram)
+            {
+                MessageBox.Show(
+                    messageBoxText: "Need a loaded image and a drawn rectangle.",
+                    caption: "Label Failure",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Warning);
+                return;
+            }
+
+            if (Math.Abs(drawingCanvas.BackgroundRotation) > 0.1)
+            {
+                MessageBox.Show(
+                    messageBoxText: "Reset background rotation to 0° before labeling.",
+                    caption: "Label Failure",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Warning);
+                return;
+            }
+            // ask user to type a name
+            string defaultName = System.IO.Path.GetFileNameWithoutExtension(_currentImagePath);
+            try
+            {
+                // image pixel coords
+                double imgCenterX = drawingCanvas.DiagramCenter!.Value.X - drawingCanvas.BackgroundDrawX;
+                double imgCenterY = drawingCanvas.DiagramCenter!.Value.Y - drawingCanvas.BackgroundDrawY;
+                int imgWidth = drawingCanvas.BackgroundImage!.PixelWidth;
+                int imgHeight = drawingCanvas.BackgroundImage.PixelHeight;
+                // paths
+                string extension = System.IO.Path.GetExtension(_currentImagePath);
+                string targetLabelPath = System.IO.Path.Combine(AppPaths.MLFolder, defaultName + ".json");
+                // build label
+                var label = new
+                {
+                    image_file = defaultName + extension,
+                    image_width = imgWidth,
+                    image_height = imgHeight,
+                    center_x_rel = imgCenterX / imgWidth,
+                    center_y_rel = imgCenterY / imgHeight,
+                    radius_x_rel = drawingCanvas.DiagramRadiusX / imgWidth,
+                    radius_y_rel = drawingCanvas.DiagramRadiusY / imgHeight
+                };
+                // copy image
+                // write json
+                string json = System.Text.Json.JsonSerializer.Serialize(label,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                System.IO.File.WriteAllText(targetLabelPath, json);
+
+                MessageBox.Show(
+                    messageBoxText:$"Dimentions of '{defaultName}' have been saved to ML folder.", 
+                    caption: "Labeled",
+                    button: MessageBoxButton.OK, 
+                    icon: MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    messageBoxText:$"Label export failed: {ex.Message}", 
+                    caption: "Error",
+                    button: MessageBoxButton.OK, 
+                    icon: MessageBoxImage.Error);
+            }
+        }
+        #endregion
+
     }
 }
