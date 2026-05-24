@@ -24,6 +24,8 @@
         <KeyBinding Key="J" Modifiers="Ctrl" Command="{x:Static local:MainWindow.AutoExtractCurveFourierCommand}"/>
         <KeyBinding Key="J" Modifiers="Ctrl+Alt" Command="{x:Static local:MainWindow.AutoExtractCurveFourierDebugCommand}"/>
 
+        <KeyBinding Key="B" Modifiers="Shift" Command="{x:Static local:MainWindow.LabelForMLCommand}"/>
+
         <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeleteDiagramCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl+Shift" Command="{x:Static local:MainWindow.DeletePointsCommand}"/>
 
@@ -82,6 +84,8 @@
                         <MenuItem Header="Auto Extract Curve (Ctrl + Alt + H)" Click="AutoExtractCurveSPDebug_Click"/>
                         <MenuItem Header="Auto Extract Curve (Ctrl + J)" Click="AutoExtractCurveFourier_Click"/>
                         <MenuItem Header="Auto Extract Curve (Ctrl + Alt + J)" Click="AutoExtractCurveFourierDebug_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Label For ML Training" Click="LabelForML_Click"/>
                         <Separator/>
                         <MenuItem x:Name="EqoDistButton" Header="Toggle Scale Mode (Ctrl + F)" Click="ToggleScaleMode_Click"/>
                         <MenuItem Header="Delete (Ctrl + Shift + D)" Click="DeleteDiagram_Click"/>
