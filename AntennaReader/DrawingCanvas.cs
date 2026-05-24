@@ -3,6 +3,7 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -915,7 +916,27 @@ namespace AntennaReader
         /// <param name="filePath"></param>
         public void SetBackgroundImage(string filePath)
         {
-            this._backgroundImage = new BitmapImage(new Uri(filePath, UriKind.Absolute));
+            BitmapImage raw = new BitmapImage(new Uri(filePath, UriKind.Absolute));
+            FormatConvertedBitmap converted = new FormatConvertedBitmap();
+            converted.BeginInit();
+            converted.Source = raw;
+            converted.DestinationFormat = System.Windows.Media.PixelFormats.Bgr24;
+            converted.EndInit();
+            
+            using MemoryStream ms = new MemoryStream();
+            PngBitmapEncoder encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(converted));
+            encoder.Save(ms);
+            ms.Position = 0;
+
+            BitmapImage normalized = new BitmapImage();
+            normalized.BeginInit();
+            normalized.CacheOption = BitmapCacheOption.OnLoad;
+            normalized.StreamSource = ms;
+            normalized.EndInit();
+            normalized.Freeze();
+
+            this._backgroundImage = normalized;
             InvalidateVisual();
         }
         #endregion

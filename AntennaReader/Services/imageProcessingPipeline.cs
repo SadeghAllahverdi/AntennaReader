@@ -30,6 +30,7 @@ namespace AntennaReader.Services
 
             // read image and apply background rotation if needed
             using Mat sourceImage = BitmapSourceConverter.ToMat(canvas.BackgroundImage!);
+            System.Diagnostics.Debug.WriteLine($"source image: channels: {sourceImage.Channels()}, type: {sourceImage.Type()}, depth: {sourceImage.Depth()}");
             Mat workingImage = new Mat();
 
             if (Math.Abs(canvas.BackgroundRotation) > 0.1)
@@ -66,6 +67,9 @@ namespace AntennaReader.Services
                 interpolationFlags: InterpolationFlags.Linear,
                 warpPolarMode: WarpPolarMode.Linear
             );
+            
+            System.Diagnostics.Debug.WriteLine($"polar image: channels: {polarImage.Channels()}, type: {polarImage.Type()}, depth: {polarImage.Depth()}");
+
             // debug output
             if (enableDebugOutput)
             {
@@ -75,6 +79,7 @@ namespace AntennaReader.Services
             // change image to HSV
             using Mat hsvImage = new Mat();
             Cv2.CvtColor(polarImage, hsvImage, ColorConversionCodes.BGR2HSV);
+            System.Diagnostics.Debug.WriteLine($"polar image: channels: {polarImage.Channels()}, type: {polarImage.Type()}, depth: {polarImage.Depth()}");
             Mat[] hsvChannels = Cv2.Split(hsvImage);
             using Mat s = hsvChannels[1];
             using Mat v = hsvChannels[2];
