@@ -1,0 +1,52 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore AntennaReader/AntennaReader.csproj
+
+      - name: Publish (self-contained, single-file, win-x64)
+        run: |
+          dotnet publish AntennaReader/AntennaReader.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o publish_output
+
+      - name: Zip the publish folder
+        run: Compress-Archive -Path publish_output\* -DestinationPath AntennaReader-${{ github.ref_name }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AntennaReader-${{ github.ref_name }}.zip
+          name: AntennaReader ${{ github.ref_name }}
+          body: |
+            ## Installation
+            1. Download `AntennaReader-${{ github.ref_name }}.zip`
+            2. Extract anywhere on your PC
+            3. Run `AntennaReader.exe`
+            
+            No .NET install required — runtime is bundled.
+          generate_release_notes: true
