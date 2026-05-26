@@ -23,11 +23,73 @@ namespace AntennaReader.Models
         public int PATExportPrecision { get; set; } = 3;
         public DateTime LastModified { get; set; } = DateTime.Now;
 
-        public int FourierHarmonics { get; set; } = 10;
-        public int ImageSaturationThreshold { get; set; } = 40;
-        public int ImageDarkThreshold { get; set; } = 100;
-        public double DpEpsilon { get; set; } = 1.8;         
-        public int DpSyncInterval { get; set; } = 30;
+        // --- Advanced Tuning (Danger Zone) ---
+
+        // 1. BOTH (Image Pipeline)
+        private int _imageSaturationThreshold = 40; // Color Ignorer: Filters out colored background grids. (Both)
+        public int ImageSaturationThreshold
+        {
+            get => _imageSaturationThreshold;
+            set => _imageSaturationThreshold = Math.Max(0, Math.Min(255, value));
+        }
+        private int _imageDarkThreshold = 100; // Ink Filter: How dark the drawn line must be. (Both)
+        public int ImageDarkThreshold
+        {
+            get => _imageDarkThreshold;
+            set => _imageDarkThreshold = Math.Max(0, Math.Min(255, value));
+        }
+        private double _centerDeadzonePercent = 0.10; // Center Blindspot: Ignores the center crosshairs (10%). (Both)
+        public double CenterDeadzonePercent
+        {
+            get => _centerDeadzonePercent;
+            set => _centerDeadzonePercent = Math.Max(0.0, Math.Min(0.90, value));
+        }
+        private int _preBlurKernelSize = 5; // Grid Eraser: Melts away thin background grid lines. (Both)
+        public int PreBlurKernelSize
+        {
+            get => _preBlurKernelSize;
+            set
+            {
+                int safeValue = Math.Max(1, Math.Min(31, value));
+                // If the number is even (like 4), add 1 to make it odd (5)
+                if (safeValue % 2 == 0) safeValue += 1;
+                _preBlurKernelSize = safeValue;
+            }
+        }
+
+        // 2. DP (Dynamic Programming)
+        private double _dpEpsilon = 1.8; //shape Precision: lower = more points/smoother. Higher = fewer points/blockier. (DP)
+        public double DpEpsilon
+        {
+            get => _dpEpsilon;
+            set => _dpEpsilon = Math.Max(0.1, Math.Min(20.0, value));
+        }
+        private int _dpSyncInterval = 30; //shape Integrity: A safety checkpoint that forces a coordinate lock every X degrees. (DP)
+        public int DpSyncInterval
+        {
+            get => _dpSyncInterval;
+            set => _dpSyncInterval = Math.Max(1, Math.Min(90, value));
+        }
+        private int _dpMaxShift = 4; // how many of the previous pixels have influence (DP)
+        public int DpMaxShift
+        {
+            get => _dpMaxShift;
+            set => _dpMaxShift = Math.Max(1, Math.Min(20, value));
+        }
+
+        // 3. FA (Fourier Algorithm)
+        private int _fourierHarmonics = 10; // how easy the line turns. Too low = jagged. Too high = overfitting and noise. (FA)
+        public int FourierHarmonics
+        {
+            get => _fourierHarmonics;
+            set => _fourierHarmonics = Math.Max(2, Math.Min(30, value));
+        }
+        private double _faVariance = 20.0; // line Focus: How tightly it follows dark ink vs. blurring it out. (FA)
+        public double FaVariance
+        {
+            get => _faVariance;
+            set => _faVariance = Math.Max(1.0, Math.Min(100.0, value));
+        }
         #endregion
 
         #region Helper -> Get Contours
@@ -36,19 +98,16 @@ namespace AntennaReader.Models
         /// </summary>
         public List<double> GetContours()
         {
-            // for log scale, ignore ContourStep
             if (IsLogScale)
             {
                 return DefaultLogContours
                     .Where(contour => contour >= lowerBound && contour <= upperBound)
                     .ToList();
             }
-            // for linear
+
             List<double> contours = new List<double>();
-            if (ContourStep <= 0)
-            {
-                return contours;
-            }
+            if (ContourStep <= 0) return contours;
+
             double firstContour = lowerBound + ContourStep;
             for (double contour = firstContour; contour < upperBound; contour += ContourStep)
             {
@@ -98,10 +157,13 @@ namespace AntennaReader.Models
 
                 ImageSaturationThreshold = this.ImageSaturationThreshold,
                 ImageDarkThreshold = this.ImageDarkThreshold,
-                FourierHarmonics = this.FourierHarmonics,
-
+                CenterDeadzonePercent = this.CenterDeadzonePercent,
+                PreBlurKernelSize = this.PreBlurKernelSize,
                 DpEpsilon = this.DpEpsilon,
-                DpSyncInterval = this.DpSyncInterval
+                DpSyncInterval = this.DpSyncInterval,
+                DpMaxShift = this.DpMaxShift,
+                FourierHarmonics = this.FourierHarmonics,
+                FaVariance = this.FaVariance
             };
         }
         #endregion

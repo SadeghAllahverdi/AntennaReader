@@ -58,7 +58,6 @@ namespace AntennaReader
                 return new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
             }
         }
-
         public double DiagramRadiusX
         {
             get
@@ -71,7 +70,6 @@ namespace AntennaReader
                 return rect.Width / 2;
             }
         }
-
         public double DiagramRadiusY
         {
             get
@@ -84,7 +82,6 @@ namespace AntennaReader
                 return rect.Height / 2;
             }
         }
-
         public BitmapImage? BackgroundImage
         {
             get
@@ -120,6 +117,7 @@ namespace AntennaReader
                 return this._startPoint != null && this._endPoint != null;
             }
         }
+
         public Dictionary<int, (double, Point)> measurements = new Dictionary<int, (double, Point)>(); // dictionary to store measurements
         private InterpolationMode _interpolationMode = InterpolationMode.Monotone;
         private Dictionary<int, double> _interpolatedMeasurements = new Dictionary<int, double>();
@@ -553,7 +551,7 @@ namespace AntennaReader
 
             foreach (KeyValuePair<int, (double, Point)> entry in this.measurements)
             {
-                dc.DrawEllipse(fillColor, strokePen, entry.Value.Item2, 2, 2);
+                dc.DrawEllipse(fillColor, strokePen, entry.Value.Item2, 1.5, 1.5);
             }
 
 

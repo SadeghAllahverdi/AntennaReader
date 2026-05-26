@@ -1,10 +1,11 @@
-﻿using System;
+﻿using AntennaReader.Models;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AntennaReader.Models;
-using Microsoft.EntityFrameworkCore;
+using System.Windows.Media.Animation;
 
 namespace AntennaReader.Infrastructure
 {
@@ -72,6 +73,19 @@ namespace AntennaReader.Infrastructure
                 existingSetting.ContourStep = setting.ContourStep;
                 existingSetting.CsvExportPrecision = setting.CsvExportPrecision;
                 existingSetting.PATExportPrecision = setting.PATExportPrecision;
+
+                existingSetting.ImageSaturationThreshold = setting.ImageSaturationThreshold;
+                existingSetting.ImageDarkThreshold = setting.ImageDarkThreshold;
+                existingSetting.CenterDeadzonePercent = setting.CenterDeadzonePercent;
+                existingSetting.PreBlurKernelSize = setting.PreBlurKernelSize;
+
+                existingSetting.DpEpsilon = setting.DpEpsilon;
+                existingSetting.DpSyncInterval = setting.DpSyncInterval;
+                existingSetting.DpMaxShift = setting.DpMaxShift;
+
+                existingSetting.FourierHarmonics = setting.FourierHarmonics;
+                existingSetting.FaVariance = setting.FaVariance;
+
                 existingSetting.LastModified = DateTime.Now;
             }
             SaveChanges();

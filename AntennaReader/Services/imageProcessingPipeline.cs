@@ -95,14 +95,14 @@ namespace AntennaReader.Services
             // cost map
             using Mat costMap = new Mat();
             Cv2.BitwiseNot(combinedMask, costMap);
-            Cv2.GaussianBlur(costMap, costMap, new OpenCvSharp.Size(5, 5), 0);
+            Cv2.GaussianBlur(costMap, costMap, new OpenCvSharp.Size(canvas.Setting.PreBlurKernelSize, canvas.Setting.PreBlurKernelSize), 0);
             if (enableDebugOutput) Cv2.ImWrite(Path.Combine(AppPaths.DebugFolder, "cost_map.png"), costMap);
 
             byte[] costMapValues = new byte[angles * rads];
             System.Runtime.InteropServices.Marshal.Copy(costMap.Data, costMapValues, 0, costMapValues.Length);
 
             // Ignoring inner 10% 
-            int ignoredInnerRadius = (int)(diagramMaxRadius * 0.1);
+            int ignoredInnerRadius = (int)(diagramMaxRadius * canvas.Setting.CenterDeadzonePercent);
             for (int angle = 0; angle < angles; angle++)
             {
                 int rowStartIndex = angle * rads;
