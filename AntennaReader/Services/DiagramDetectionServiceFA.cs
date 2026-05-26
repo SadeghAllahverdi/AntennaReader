@@ -14,7 +14,7 @@ namespace AntennaReader.Services
             // 1. Get the pre-processed cost map data from the master pipeline
             CostMapData data = ImageProcessingPipeline.GenerateCostMap(canvas, enableDebugOutput);
 
-            int ignoredInnerRadiusOfDiagram = (int)(data.DiagramMaxRadius * 0.1);
+            int ignoredInnerRadiusOfDiagram = (int)(data.DiagramMaxRadius * canvas.Setting.CenterDeadzonePercent);
 
             // 4. Iteratively Reweighted Least Squares (IRLS) Fourier Fit
             int[] fittedPath = new int[data.Angles];
@@ -40,7 +40,8 @@ namespace AntennaReader.Services
                         if (iter > 0)
                         {
                             double dist = Math.Abs(rad - fittedPath[angle]);
-                            weight *= Math.Exp(-(dist * dist) / (2.0 * 20.0 * 20.0));
+                            double variance = canvas.Setting.FaVariance;
+                            weight *= Math.Exp(-(dist * dist) / (2.0 * variance * variance));
                         }
 
                         weightedRadiusSum += weight * rad;

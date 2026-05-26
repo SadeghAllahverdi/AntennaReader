@@ -73,12 +73,18 @@ namespace AntennaReader
             bool isEqualDistance = !currentSetting.IsLogScale;
             ContourStepLabel.IsEnabled = isEqualDistance;
             ContourStepCombo.IsEnabled = isEqualDistance;
-
+            // Both
             SatThreshBox.Text = currentSetting.ImageSaturationThreshold.ToString(CultureInfo.InvariantCulture);
             DarkThreshBox.Text = currentSetting.ImageDarkThreshold.ToString(CultureInfo.InvariantCulture);
-            HarmonicsBox.Text = currentSetting.FourierHarmonics.ToString(CultureInfo.InvariantCulture);
+            BlurKernelBox.Text = currentSetting.PreBlurKernelSize.ToString(CultureInfo.InvariantCulture);     
+            DeadzoneBox.Text = currentSetting.CenterDeadzonePercent.ToString(CultureInfo.InvariantCulture); 
+            // DP
             DpEpsilonBox.Text = currentSetting.DpEpsilon.ToString(CultureInfo.InvariantCulture);
             DpSyncBox.Text = currentSetting.DpSyncInterval.ToString(CultureInfo.InvariantCulture);
+            DpMaxShiftBox.Text = currentSetting.DpMaxShift.ToString(CultureInfo.InvariantCulture);          
+            // FA
+            HarmonicsBox.Text = currentSetting.FourierHarmonics.ToString(CultureInfo.InvariantCulture);
+            FaVarianceBox.Text = currentSetting.FaVariance.ToString(CultureInfo.InvariantCulture);
 
             FillContourStepCombo();
             FillPrecisionCombos();
@@ -253,13 +259,25 @@ namespace AntennaReader
             // safely parse whole numbers (integers)
             if (int.TryParse(SatThreshBox.Text, out int sat)) currentSetting.ImageSaturationThreshold = sat;
             if (int.TryParse(DarkThreshBox.Text, out int dark)) currentSetting.ImageDarkThreshold = dark;
-            if (int.TryParse(HarmonicsBox.Text, out int harmonics)) currentSetting.FourierHarmonics = harmonics;
-            if (int.TryParse(DpSyncBox.Text, out int sync)) currentSetting.DpSyncInterval = sync;
+            if (int.TryParse(BlurKernelBox.Text, out int blur)) currentSetting.PreBlurKernelSize = blur; 
 
-            // safely parse decimals (like 1.8 for DP Epsilon)
+            if (int.TryParse(DpSyncBox.Text, out int sync)) currentSetting.DpSyncInterval = sync;
+            if (int.TryParse(DpMaxShiftBox.Text, out int shift)) currentSetting.DpMaxShift = shift;      
+
+            if (int.TryParse(HarmonicsBox.Text, out int harmonics)) currentSetting.FourierHarmonics = harmonics;
+
+            // safely parse decimals (floats/doubles)
+            if (double.TryParse(DeadzoneBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double dz)) 
+            {
+                currentSetting.CenterDeadzonePercent = dz;
+            }
             if (double.TryParse(DpEpsilonBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double eps))
             {
                 currentSetting.DpEpsilon = eps;
+            }
+            if (double.TryParse(FaVarianceBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double fav)) 
+            {
+                currentSetting.FaVariance = fav;
             }
 
             // Instead of running the math instantly, restart the stopwatch!

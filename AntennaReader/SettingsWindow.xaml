@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Diagram Settings"
-        Height="540" Width="440"
+        Height="680" Width="520"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize">
 
@@ -89,6 +89,11 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -98,16 +103,34 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Color Filter:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Filters out background noise based on color saturation (0-255)."/>
-                <TextBox Grid.Row="0" Grid.Column="1" x:Name="SatThreshBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 40"/>
-                <TextBlock Grid.Row="0" Grid.Column="3" Text="Darkness Filter:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Filters out light shadows. Higher values require darker ink (0-255)."/>
-                <TextBox Grid.Row="0" Grid.Column="4" x:Name="DarkThreshBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 100"/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Path Smoothing:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="How aggressively to remove redundant points on flat lines. (e.g., 1.8)"/>
-                <TextBox Grid.Row="1" Grid.Column="1" x:Name="DpEpsilonBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 1.8"/>
-                <TextBlock Grid.Row="1" Grid.Column="3" Text="Sync Interval:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Forces the pathfinder to save a coordinate every X degrees, even if the line is smooth."/>
-                <TextBox Grid.Row="1" Grid.Column="4" x:Name="DpSyncBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 30"/>
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Curve Flexibility:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="How tightly the wave bends to fit the points. High = jagged, Low = smooth (e.g., 10-15)."/>
-                <TextBox Grid.Row="2" Grid.Column="1" x:Name="HarmonicsBox" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 15"/>
+                <TextBlock Grid.Row="0" Grid.ColumnSpan="5" Text="General Image Rules:" FontWeight="SemiBold" Margin="0,0,0,6"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Color Filter:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Ignores more colors. Higher = Keeps more colors (0-255)."/>
+                <TextBox Grid.Row="1" Grid.Column="1" x:Name="SatThreshBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 40"/>
+                <TextBlock Grid.Row="1" Grid.Column="3" Text="Darkness Filter:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Keeps faint shadows. Higher = Requires extremely dark ink (0-255)."/>
+                <TextBox Grid.Row="1" Grid.Column="4" x:Name="DarkThreshBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 100"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Grid Eraser (Kernel):" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Keeps sharp details. Higher = Melts away thin background grid lines (Odd numbers only)."/>
+                <TextBox Grid.Row="2" Grid.Column="1" x:Name="BlurKernelBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 5"/>
+                <TextBlock Grid.Row="2" Grid.Column="3" Text="Center Blindspot:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Reads ink right at the center. Higher = Ignores a wider circle around the center crosshairs (0.10 = 10%)."/>
+                <TextBox Grid.Row="2" Grid.Column="4" x:Name="DeadzoneBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 0.10"/>
+
+                <TextBlock Grid.Row="3" Grid.ColumnSpan="5" Text="Point-to-Point Algorithm (DP):" FontWeight="SemiBold" Margin="0,10,0,6"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Path Smoothing:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Keeps every tiny corner (smooth). Higher = Flattens out stretches to reduce points (blocky)."/>
+                <TextBox Grid.Row="4" Grid.Column="1" x:Name="DpEpsilonBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 1.8"/>
+                <TextBlock Grid.Row="4" Grid.Column="3" Text="Sync Interval:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Forces a coordinate lock frequently. Higher = Allows longer stretches without coordinates."/>
+                <TextBox Grid.Row="4" Grid.Column="4" x:Name="DpSyncBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 30"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Dip Sensitivity:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Forces the line to stay somewhat round. Higher = Allows the line to dive instantly into sharp nulls."/>
+                <TextBox Grid.Row="5" Grid.Column="1" x:Name="DpMaxShiftBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 4"/>
+
+                <TextBlock Grid.Row="6" Grid.ColumnSpan="5" Text="Smooth Curve Algorithm (FA):" FontWeight="SemiBold" Margin="0,10,0,6"/>
+
+                <TextBlock Grid.Row="7" Grid.Column="0" Text="Curve Flexibility:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Lower = A very simple, smooth wave. Higher = A jagged wave that tries to hit every single point."/>
+                <TextBox Grid.Row="7" Grid.Column="1" x:Name="HarmonicsBox" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 10"/>
+                <TextBlock Grid.Row="7" Grid.Column="3" Text="Line Focus:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Lower = Strictly follows the darkest ink. Higher = Looks at a wider average of all ink in the area."/>
+                <TextBox Grid.Row="7" Grid.Column="4" x:Name="FaVarianceBox" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 20"/>
             </Grid>
         </GroupBox>
 

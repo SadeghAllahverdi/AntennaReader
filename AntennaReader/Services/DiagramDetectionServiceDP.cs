@@ -26,7 +26,7 @@ namespace AntennaReader.Services
                 ancestor[0, rad] = rad;
             }
 
-            int maxShift = 4; // Max pixel shift tracking constraint per step angle
+            int maxShift = canvas.Setting.DpMaxShift; // Max pixel shift tracking constraint per step angle
 
             for (int angle = 1; angle < data.Angles; angle++)
             {
