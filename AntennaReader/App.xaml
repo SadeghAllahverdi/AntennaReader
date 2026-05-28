@@ -4,6 +4,41 @@
              xmlns:local="clr-namespace:AntennaReader"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <Style TargetType="Button" x:Key="StandardBtn">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinWidth" Value="80" />
+            <Setter Property="Margin" Value="4,0,4,0" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style TargetType="Button" x:Key="DangerBtn" BasedOn="{StaticResource StandardBtn}">
+            <Setter Property="Background" Value="#D32F2F" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style TargetType="TextBlock" x:Key="FormLabel">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+        </Style>
+
+        <Style TargetType="TextBlock" x:Key="HeaderLabel">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <Style TargetType="TextBlock" x:Key="HintText">
+            <Setter Property="Foreground" Value="Gray" />
+            <Setter Property="FontStyle" Value="Italic" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <Style TargetType="Control" x:Key="StandardInput">
+            <Setter Property="Height" Value="24" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
     </Application.Resources>
 </Application>

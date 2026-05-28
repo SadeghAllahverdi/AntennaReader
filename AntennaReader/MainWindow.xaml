@@ -42,27 +42,25 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="White" Panel.ZIndex="1">
+        <Border Grid.Row="0" Panel.ZIndex="1" Background="Transparent">
             <DockPanel LastChildFill="True">
+
                 <TextBlock x:Name="AntennaNameText"
-                   DockPanel.Dock="Right"
-                   Margin="12,0,12,0"
-                   VerticalAlignment="Center"
-                   Foreground="Black"
-                   FontWeight="Bold"
-                   Text="No antenna loaded"/>
+                           DockPanel.Dock="Right"
+                           Margin="12,0,12,0"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           Text="No antenna loaded"/>
 
                 <TextBlock x:Name="LockStatusText"
-                   DockPanel.Dock="Right"
-                   Margin="12,0,12,0"
-                   VerticalAlignment="Center"
-                   FontWeight="Bold"
-                   Foreground="Green"
-                   Text="Unlocked"/>
+                           DockPanel.Dock="Right"
+                           Margin="12,0,12,0"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           Foreground="LimeGreen"
+                           Text="Unlocked"/>
 
-                <Menu DockPanel.Dock="Left"
-              Background="White"
-              Foreground="Black">
+                <Menu DockPanel.Dock="Left" Background="Transparent">
                     <MenuItem Header="File">
                         <MenuItem Header="Open Image (Ctrl + O)" Click="OpenImage_Click"/>
                         <MenuItem Header="Delete Image (Ctrl + D)" Click="DeleteBackgroundImageFromCanvas_Click"/>
@@ -108,7 +106,7 @@
                 </Menu>
             </DockPanel>
         </Border>
-        
+
         <local:DrawingCanvas x:Name="drawingCanvas"
                              Grid.Row="1"
                              Background="DimGray"

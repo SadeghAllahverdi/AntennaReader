@@ -22,13 +22,13 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Scale Mode" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="0" Text="Scale Mode" Style="{StaticResource HeaderLabel}"/>
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
             <RadioButton x:Name="LogScaleRadio" Content="Logarithmic" Margin="0,0,16,0" Checked="ScaleMode_Changed"/>
             <RadioButton x:Name="LinearScaleRadio" Content="Equal-Distance" Checked="ScaleMode_Changed"/>
         </StackPanel>
 
-        <TextBlock Grid.Row="2" Text="dB Range" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="2" Text="dB Range" Style="{StaticResource HeaderLabel}"/>
         <Grid Grid.Row="3" Margin="0,0,0,4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -37,22 +37,23 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="Lower:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox Grid.Column="1" x:Name="LowerBoundBox" TextChanged="BoundsTextBox_TextChanged"/>
-            <TextBlock Grid.Column="3" Text="Upper:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox Grid.Column="4" x:Name="UpperBoundBox" TextChanged="BoundsTextBox_TextChanged"/>
+            <TextBlock Grid.Column="0" Text="Lower:" Style="{StaticResource FormLabel}"/>
+            <TextBox Grid.Column="1" x:Name="LowerBoundBox" Style="{StaticResource StandardInput}" TextChanged="BoundsTextBox_TextChanged" Margin="0"/>
+            <TextBlock Grid.Column="3" Text="Upper:" Style="{StaticResource FormLabel}"/>
+            <TextBox Grid.Column="4" x:Name="UpperBoundBox" Style="{StaticResource StandardInput}" TextChanged="BoundsTextBox_TextChanged" Margin="0"/>
         </Grid>
         <TextBlock Grid.Row="4" x:Name="DbHintText"
-                   Foreground="Gray" FontSize="11"
+                   Style="{StaticResource HintText}"
                    Margin="0,0,0,14"
                    Text="Log mode forces Lower = 0"/>
 
-        <TextBlock Grid.Row="5" x:Name="ContourStepLabel" Text="Contour Step (Equal-Distance only)" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="5" x:Name="ContourStepLabel" Text="Contour Step (Equal-Distance only)" Style="{StaticResource HeaderLabel}"/>
         <ComboBox Grid.Row="6" x:Name="ContourStepCombo"
+                  Style="{StaticResource StandardInput}"
                   SelectionChanged="ContourStepCombo_SelectionChanged"
                   Margin="0,0,0,14"/>
 
-        <TextBlock Grid.Row="7" Text="Export Precision" FontWeight="Bold" Margin="0,0,0,6"/>
+        <TextBlock Grid.Row="7" Text="Export Precision" Style="{StaticResource HeaderLabel}"/>
         <Grid Grid.Row="8" Margin="0,0,0,14">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -61,10 +62,10 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="CSV:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox Grid.Column="1" x:Name="CsvPrecisionCombo" SelectionChanged="PrecisionCombo_SelectionChanged"/>
-            <TextBlock Grid.Column="3" Text="PAT:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox Grid.Column="4" x:Name="PatPrecisionCombo" SelectionChanged="PrecisionCombo_SelectionChanged"/>
+            <TextBlock Grid.Column="0" Text="CSV:" Style="{StaticResource FormLabel}"/>
+            <ComboBox Grid.Column="1" x:Name="CsvPrecisionCombo" Style="{StaticResource StandardInput}" SelectionChanged="PrecisionCombo_SelectionChanged" Margin="0"/>
+            <TextBlock Grid.Column="3" Text="PAT:" Style="{StaticResource FormLabel}"/>
+            <ComboBox Grid.Column="4" x:Name="PatPrecisionCombo" Style="{StaticResource StandardInput}" SelectionChanged="PrecisionCombo_SelectionChanged" Margin="0"/>
         </Grid>
 
         <GroupBox Grid.Row="9" Margin="0,0,0,14" Padding="8,12,8,8">
@@ -80,11 +81,6 @@
                 </StackPanel>
             </GroupBox.Header>
             <Grid>
-                <Grid.Resources>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="Black"/>
-                    </Style>
-                </Grid.Resources>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -103,41 +99,45 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.ColumnSpan="5" Text="General Image Rules:" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <TextBlock Grid.Row="0" Grid.ColumnSpan="5" Text="General Image Rules:" Style="{StaticResource HeaderLabel}" Margin="0,0,0,6"/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Color Filter:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Ignores more colors. Higher = Keeps more colors (0-255)."/>
-                <TextBox Grid.Row="1" Grid.Column="1" x:Name="SatThreshBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 40"/>
-                <TextBlock Grid.Row="1" Grid.Column="3" Text="Darkness Filter:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Keeps faint shadows. Higher = Requires extremely dark ink (0-255)."/>
-                <TextBox Grid.Row="1" Grid.Column="4" x:Name="DarkThreshBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 100"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Color Filter:" Style="{StaticResource FormLabel}" ToolTip="Lower = Ignores more colors. Higher = Keeps more colors (0-255)."/>
+                <TextBox Grid.Row="1" Grid.Column="1" x:Name="SatThreshBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 40"/>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Grid Eraser (Kernel):" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Keeps sharp details. Higher = Melts away thin background grid lines (Odd numbers only)."/>
-                <TextBox Grid.Row="2" Grid.Column="1" x:Name="BlurKernelBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 5"/>
-                <TextBlock Grid.Row="2" Grid.Column="3" Text="Center Blindspot:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Reads ink right at the center. Higher = Ignores a wider circle around the center crosshairs (0.10 = 10%)."/>
-                <TextBox Grid.Row="2" Grid.Column="4" x:Name="DeadzoneBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 0.10"/>
+                <TextBlock Grid.Row="1" Grid.Column="3" Text="Darkness Filter:" Style="{StaticResource FormLabel}" ToolTip="Lower = Keeps faint shadows. Higher = Requires extremely dark ink (0-255)."/>
+                <TextBox Grid.Row="1" Grid.Column="4" x:Name="DarkThreshBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 100"/>
 
-                <TextBlock Grid.Row="3" Grid.ColumnSpan="5" Text="Point-to-Point Algorithm (DP):" FontWeight="SemiBold" Margin="0,10,0,6"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Grid Eraser (Kernel):" Style="{StaticResource FormLabel}" ToolTip="Lower = Keeps sharp details. Higher = Melts away thin background grid lines (Odd numbers only)."/>
+                <TextBox Grid.Row="2" Grid.Column="1" x:Name="BlurKernelBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 5"/>
 
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Path Smoothing:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Keeps every tiny corner (smooth). Higher = Flattens out stretches to reduce points (blocky)."/>
-                <TextBox Grid.Row="4" Grid.Column="1" x:Name="DpEpsilonBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 1.8"/>
-                <TextBlock Grid.Row="4" Grid.Column="3" Text="Sync Interval:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Forces a coordinate lock frequently. Higher = Allows longer stretches without coordinates."/>
-                <TextBox Grid.Row="4" Grid.Column="4" x:Name="DpSyncBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 30"/>
+                <TextBlock Grid.Row="2" Grid.Column="3" Text="Center Blindspot:" Style="{StaticResource FormLabel}" ToolTip="Lower = Reads ink right at the center. Higher = Ignores a wider circle around the center crosshairs (0.10 = 10%)."/>
+                <TextBox Grid.Row="2" Grid.Column="4" x:Name="DeadzoneBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 0.10"/>
 
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="Dip Sensitivity:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,10" ToolTip="Lower = Forces the line to stay somewhat round. Higher = Allows the line to dive instantly into sharp nulls."/>
-                <TextBox Grid.Row="5" Grid.Column="1" x:Name="DpMaxShiftBox" TextChanged="TuningTextBox_TextChanged" Margin="0,0,0,10" ToolTip="Default: 4"/>
+                <TextBlock Grid.Row="3" Grid.ColumnSpan="5" Text="Point-to-Point Algorithm (DP):" Style="{StaticResource HeaderLabel}" Margin="0,10,0,6"/>
 
-                <TextBlock Grid.Row="6" Grid.ColumnSpan="5" Text="Smooth Curve Algorithm (FA):" FontWeight="SemiBold" Margin="0,10,0,6"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Path Smoothing:" Style="{StaticResource FormLabel}" ToolTip="Lower = Keeps every tiny corner (smooth). Higher = Flattens out stretches to reduce points (blocky)."/>
+                <TextBox Grid.Row="4" Grid.Column="1" x:Name="DpEpsilonBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 1.8"/>
 
-                <TextBlock Grid.Row="7" Grid.Column="0" Text="Curve Flexibility:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Lower = A very simple, smooth wave. Higher = A jagged wave that tries to hit every single point."/>
-                <TextBox Grid.Row="7" Grid.Column="1" x:Name="HarmonicsBox" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 10"/>
-                <TextBlock Grid.Row="7" Grid.Column="3" Text="Line Focus:" FontWeight="Normal" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Lower = Strictly follows the darkest ink. Higher = Looks at a wider average of all ink in the area."/>
-                <TextBox Grid.Row="7" Grid.Column="4" x:Name="FaVarianceBox" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 20"/>
+                <TextBlock Grid.Row="4" Grid.Column="3" Text="Sync Interval:" Style="{StaticResource FormLabel}" ToolTip="Lower = Forces a coordinate lock frequently. Higher = Allows longer stretches without coordinates."/>
+                <TextBox Grid.Row="4" Grid.Column="4" x:Name="DpSyncBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 30"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Dip Sensitivity:" Style="{StaticResource FormLabel}" ToolTip="Lower = Forces the line to stay somewhat round. Higher = Allows the line to dive instantly into sharp nulls."/>
+                <TextBox Grid.Row="5" Grid.Column="1" x:Name="DpMaxShiftBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 4"/>
+
+                <TextBlock Grid.Row="6" Grid.ColumnSpan="5" Text="Smooth Curve Algorithm (FA):" Style="{StaticResource HeaderLabel}" Margin="0,10,0,6"/>
+
+                <TextBlock Grid.Row="7" Grid.Column="0" Text="Curve Flexibility:" Style="{StaticResource FormLabel}" ToolTip="Lower = A very simple, smooth wave. Higher = A jagged wave that tries to hit every single point."/>
+                <TextBox Grid.Row="7" Grid.Column="1" x:Name="HarmonicsBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 10"/>
+
+                <TextBlock Grid.Row="7" Grid.Column="3" Text="Line Focus:" Style="{StaticResource FormLabel}" ToolTip="Lower = Strictly follows the darkest ink. Higher = Looks at a wider average of all ink in the area."/>
+                <TextBox Grid.Row="7" Grid.Column="4" x:Name="FaVarianceBox" Style="{StaticResource StandardInput}" TextChanged="TuningTextBox_TextChanged" ToolTip="Default: 20"/>
             </Grid>
         </GroupBox>
 
         <StackPanel Grid.Row="11" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Save as Preference..." Width="150" Height="28" Margin="0,0,8,0" Click="SaveAsPreference_Click"/>
-            <Button Content="Cancel" Width="80" Height="28" Margin="0,0,8,0" Click="Cancel_Click"/>
-            <Button Content="Done" Width="80" Height="28" Click="Done_Click" IsDefault="True"/>
+            <Button Content="Save as Preference..." Style="{StaticResource StandardBtn}" Click="SaveAsPreference_Click"/>
+            <Button Content="Cancel" Style="{StaticResource StandardBtn}" Click="Cancel_Click"/>
+            <Button Content="Done" Style="{StaticResource StandardBtn}" Click="Done_Click" IsDefault="True"/>
         </StackPanel>
     </Grid>
 </Window>
