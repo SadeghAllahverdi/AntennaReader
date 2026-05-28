@@ -1,25 +1,22 @@
 ﻿<Window x:Class="AntennaReader.SettingNameInputDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:AntennaReader"
-        mc:Ignorable="d"
-        Title="SettingNameInputDialog"
-        Height="140" Width="340"
-        WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize">
+        Title="Setting Name" Height="140" Width="340"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <TextBlock Grid.Row="0" Text="Preference name:" Margin="0,0,0,6"/>
-        <TextBox Grid.Row="1" x:Name="NameBox" Margin="0,0,0,12"/>
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Cancel" Width="80" Height="26" Margin="0,0,8,0" Click="Cancel_Click"/>
-            <Button Content="OK" Width="80" Height="26" Click="Save_Click" IsDefault="True"/>
+
+        <TextBlock Grid.Row="0" Text="Preference name:" Style="{StaticResource FormLabel}"/>
+        <TextBox Grid.Row="1" x:Name="NameBox" Style="{StaticResource StandardInput}"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Cancel" Style="{StaticResource StandardBtn}" Click="Cancel_Click"/>
+            <Button Content="OK" Style="{StaticResource StandardBtn}" Click="Save_Click" IsDefault="True"/>
         </StackPanel>
     </Grid>
 </Window>

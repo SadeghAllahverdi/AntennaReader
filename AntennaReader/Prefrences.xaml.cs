@@ -1,8 +1,12 @@
 ﻿using AntennaReader.Infrastructure;
 using AntennaReader.Models;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace AntennaReader
 {
@@ -12,6 +16,9 @@ namespace AntennaReader
     /// </summary>
     public partial class Prefrences : Window
     {
+        // attributes
+        private ICollectionView? _preferenceView;
+
         #region Constructor
         public Prefrences()
         {
@@ -30,17 +37,48 @@ namespace AntennaReader
             {
                 using (AppDbContext db = new AppDbContext())
                 {
-                    PreferenceList.ItemsSource = db.GetAllDCSettings();
+                    List<DrawingCanvasSetting> preferences = db.GetAllDCSettings().ToList();
+                    PreferenceList.ItemsSource = preferences;
+
+                    // Set up the CollectionView for search filtering
+                    _preferenceView = CollectionViewSource.GetDefaultView(preferences);
+                    _preferenceView.Filter = this.PreferenceFilter;
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    messageBoxText:$"Failed to load preferences: {ex.Message}",
-                    caption:"Error", 
-                    button: MessageBoxButton.OK, 
+                    messageBoxText: $"Failed to load preferences: {ex.Message}",
+                    caption: "Error",
+                    button: MessageBoxButton.OK,
                     icon: MessageBoxImage.Error);
             }
+        }
+        #endregion
+
+        #region Helper -> Preference Filter
+        /// <summary>
+        /// Filter function for preferences based on search text box input
+        /// </summary>
+        private bool PreferenceFilter(object row)
+        {
+            DrawingCanvasSetting? pref = row as DrawingCanvasSetting;
+            if (pref == null) return false;
+
+            string searchText = SearchBar.Text;
+            if (string.IsNullOrEmpty(searchText)) return true;
+
+            return pref.Name != null && pref.Name.ToLower().Contains(searchText.ToLower());
+        }
+        #endregion
+
+        #region Text Changed -> Search Bar
+        /// <summary>
+        /// refreshes the preference list based on search bar input
+        /// </summary>
+        private void SearchBar_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _preferenceView?.Refresh();
         }
         #endregion
 
@@ -64,10 +102,10 @@ namespace AntennaReader
             if (selectedPreference == null)
             {
                 MessageBox.Show(
-                    messageBoxText:"Select a preference first.", 
-                    caption:"No Selection", 
-                    button:MessageBoxButton.OK, 
-                    icon:MessageBoxImage.Exclamation);
+                    messageBoxText: "Select a preference first.",
+                    caption: "No Selection",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Exclamation);
                 return;
             }
 
@@ -91,9 +129,9 @@ namespace AntennaReader
             {
                 MessageBox.Show(
                     messageBoxText: "Select a preference first.",
-                    caption: "No Selection", 
-                    button:MessageBoxButton.OK, 
-                    icon:MessageBoxImage.Exclamation);
+                    caption: "No Selection",
+                    button: MessageBoxButton.OK,
+                    icon: MessageBoxImage.Exclamation);
                 return;
             }
 
