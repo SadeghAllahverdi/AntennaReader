@@ -2,7 +2,7 @@
 
 AntennaReader is a Windows WPF application for digitizing antenna diagram images. It lets you load a diagram image, align a measurement ellipse over it, manually or automatically extract dB values by angle, save diagrams to a local SQLite database, and export the results for downstream tools.
 
-<video src="docs/demo.mp4" controls width="800"></video>
+<video src="demo/demo.mp4" controls width="800"></video>
 
 ## Features
 
