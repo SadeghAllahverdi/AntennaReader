@@ -1,0 +1,2 @@
+# Created by every publish (the exe alone is ~250 MB). Rebuild it instead of committing it.
+out/
